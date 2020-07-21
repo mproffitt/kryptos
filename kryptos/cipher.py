@@ -112,19 +112,29 @@ class Cipher(object):
         """
         Sets the current cipher position on the grids
         """
-        pagesize = 5
-        if code == 'ArrowLeft':
-            self._cindex = self._cindex - 1 if self._cindex > 0 else len(self)-1
-        elif code == 'ArrowRight':
-            self._cindex = self._cindex + 1 if self._cindex < len(self)-1 else 0
-        elif code == 'ArrowUp':
-            self._cindex = self._cindex + pagesize if (self._cindex + pagesize) < len(self)-1 \
-                else 0 + ((self._cindex + pagesize) - len(self))
-        elif code == 'ArrowDown':
-            self._cindex = self._cindex - pagesize if (self._cindex - pagesize) >= 0 \
-                else (len(self) - (pagesize - self._cindex))
-        self._currentc = helpers.i2a((self._cindex % 26) + 1)
+        pagesize = 10
+        prevrow = ((26 - helpers.a2i(self._currentc)) + helpers.a2i(self._currentc))
+        nextrow = helpers.a2i(self._currentc) + (26 - helpers.a2i(self._currentc))
+        lastrow = (len(self) % 26) - nextrow if (len(self) % 26) - nextrow > 0 \
+            else (len(self) - (26 * (len(self)  //  26)))
+
+        primary = {
+            'ArrowLeft':  self._cindex - 1 if self._cindex > 0 else len(self) - 1,
+            'ArrowRight': self._cindex + 1 if self._cindex < len(self)-1 else 0,
+            'PageUp': self._cindex + pagesize if (self._cindex + pagesize) < len(self)-1 \
+                else 0 + ((self._cindex + pagesize) - len(self)),
+            'PageDown': self._cindex - pagesize if (self._cindex - pagesize) >= 0 \
+                else (len(self) - (pagesize - self._cindex)),
+            'Home':  0,
+            'End': len(self) - 1,
+            'ArrowDown': (self._cindex + prevrow) if self._cindex + prevrow < len(self) \
+                else helpers.a2i(self._currentc) - 1,
+            # cant get this to work properly
+            'ArrowUp': (self._cindex - nextrow) if self._cindex - nextrow >= 0 else lastrow,
+        }
+        self._cindex = primary[code] if code in primary.keys() else self._cindex
         self._currentr = self._cindex // 26
+        self._currentc = helpers.i2a((self._cindex % 26) + 1)
 
     def _draw(self):
         """ Jupyter notebook code to draw widgets """

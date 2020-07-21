@@ -21,6 +21,8 @@ class Character(object):
     - lacuna visible
     - both visible
 
+    Additionally a set of properties are available which adjust the directionality of the current position
+
     If neither cipher or lacuna are visible in the grids plotted to either table, the decipher method
     then defines an additional set of rules for choosing the correct cipher algorithm.
 
@@ -47,22 +49,22 @@ class Character(object):
     lacuna             = ''
     deciphered         = ''
     table              = None
-    xor                = None
-    use_alt            = False
+    binary                = None
+    polarity            = False
     cipher_active      = False
     lacuna_active      = False
     map_cipher         = {}
     _position          = None
     _intermediate      = None
-    _calculation_index = 0
+    algorithm = 0
     _char_index        = 0
     _lacuna_index      = 0
 
-    def __init__(self, character, index, use_alt, ciphertext):
+    def __init__(self, character, index, polarity, ciphertext):
         self.index     = index
         self.character = character.upper()
         self.lacuna    = helpers.distancefrom(self.character, 'Z')
-        self.use_alt   = use_alt
+        self.polarity   = polarity
 
         self._char_index   = helpers.a2i(self.character)
         self._lacuna_index = helpers.a2i(self.lacuna)
@@ -71,7 +73,7 @@ class Character(object):
         # Create a Square object for each character in the cipher
         # ------------------------------------------------------------
         self.cipher = {
-            key: Square(self.character, key, self.use_alt, ciphertext)
+            key: Square(self.character, key, self.polarity, ciphertext)
             for key in self.cipher.keys()
         }
 
@@ -80,7 +82,7 @@ class Character(object):
         # polarity, then build the tables and move to find the
         # intermediate character.
         # ------------------------------------------------------------
-        self.xor = self._char_index % 2 == 0
+        self.binary = self._char_index % 2 == 0
         _ = [table.plot() for _, table in self.cipher.items()]
         _ = self.decipher
 
@@ -92,25 +94,25 @@ class Character(object):
 
     @property
     def algorithm(self):
-        return self._calculation_index
+        return self._algorithm
 
     @algorithm.setter
     def algorithm(self, which):
-        self._calculation_index = which
+        self._algorithm = which
 
     @property
     def final(self):
-        self._calculation_index = self._calculation_index % 4
+        self.algorithm = self.algorithm % 4
         for key in self.cipher.keys():
             self.cipher[key].mark_lacuna(self.intermediate)
         return (
-            self._calculation_index,
-            self.transcribe(self._calculation_index, self.decipher)
+            self.algorithm,
+            self.transcribe(self.algorithm, self.decipher)
         )
 
     @property
-    def uses_alt(self):
-        return all([self.cipher[True].alt_active, self.cipher[False].alt_active])
+    def mapped(self):
+        return all([self.cipher[True].mapped, self.cipher[False].mapped])
 
     def can_replace(self, what):
         return what in self.cipher[True].table.keys['replace'].keys()
@@ -122,10 +124,10 @@ class Character(object):
         """
         table = {
             'table'         : self.table,
-            'xor'           : self.xor,
+            'binary'        : self.binary,
             'position'      : self.position,
-            'use_alt'       : self.use_alt,
-            'uses_alt'      : self.uses_alt,
+            'polarity'      : self.polarity,
+            'mapped'        : self.mapped,
             'cipher_active' : self.cipher_active,
             'lacuna_active' : self.lacuna_active,
         }
@@ -205,147 +207,149 @@ class Character(object):
         """
         Main decipher method
         """
-        if not self._intermediate:
-            # ============================================================================
-            # RULES
-            # ----------------------------------------------------------------------------
-            # The following block sets the rules for the cipher location starting with the
-            # principle conditions for execution.
-            #
-            # Deciphering starts in the top left corner and moves around the table according
-            # to the rules matched for that character.
-            # ============================================================================
-            self.table = (self.index % 2 != 0)
-            self.position = 'tl'
+        if self._intermediate:
+            return self._intermediate
+
+        # ============================================================================
+        # RULES
+        # ----------------------------------------------------------------------------
+        # The following block sets the rules for the cipher location starting with the
+        # principle conditions for execution.
+        #
+        # Deciphering starts in the top left corner and moves around the table according
+        # to the rules matched for that character.
+        # ============================================================================
+        self.table = (self.index % 2 != 0)
+        self.position = 'tl'
+        # ------------------------------------------------------------
+        # algorithm is used to select which deciphering
+        #                    algorithm to choose from 4 possible
+        #                    options.
+        #
+        # The order of the calculation index is fixed as this maps
+        # directly to a list of  deciphering algorithms below.
+        #
+        # The order is as follows:
+        #   - 0: Nothing
+        #   - 1: (c + x) % 26
+        #   - 2: distancefrom(x, 'Z')
+        #   - 3: c + distancefrom(x, 'Z') % 26
+        # ------------------------------------------------------------
+        self.algorithm = 1 if not self.table or (self.table and self.binary) else 0
+        self.algorithm = 0 if self.mapped else self.algorithm
+        self.algorithm += 2 if self.can_replace(self.character) and not self.mapped else 0
+        self.algorithm += 1 if self.index % 15 == 0 else 0
+        self.algorithm += 1 if self._char_index % 5 == 0 else 0
+
+        self.table = not self.table if (self._char_index % 2) == 0 else self.table
+
+        """
+        Condition 1. If we use the alternate character, change the nature of the table
+        """
+        if self.polarity and self.mapped:
+            self.table = not self.table if self.index % 2 == 0 else self.table
+            self.position = 'tr'
+            self.table, self.position = (not self.table, 'tl') if self.binary else (self.table, self.position)
+
+        """
+        Condition 2. If the current polarity of the character is True, flip positions
+        """
+        if self.binary:
+            self.position = {
+                'tl': 'br',
+                'br': 'tl',
+                'tr': 'bl',
+                'bl': 'tr',
+            }[self.position]
+
+        """
+        Primary Rule 1. If not cipher character visible and not lacuna character visible
+        """
+        if not self.cipher_active and not self.lacuna_active:
             # ------------------------------------------------------------
-            # _calculation_index is used to select which deciphering
-            #                    algorithm to choose from 4 possible
-            #                    options.
-            #
-            # The order of the calculation index is fixed as this maps
-            # directly to a list of  deciphering algorithms below.
-            #
-            # The order is as follows:
-            #   - 0: Nothing
-            #   - 1: (c + x) % 26
-            #   - 2: distancefrom(x, 'Z')
-            #   - 3: c + distancefrom(x, 'Z') % 26
+            # Sub rule 1 - Current characters Z Lacuna exists in either table
             # ------------------------------------------------------------
-            self._calculation_index = 1 if not self.table or (self.table and self.xor) else 0
-            self._calculation_index = 0 if self.uses_alt else self._calculation_index
-            self._calculation_index += 2 if self.can_replace(self.character) and not self.uses_alt else 0
-            self._calculation_index += 1 if self.index % 15 == 0 else 0
-            self._calculation_index += 1 if self._char_index % 5 == 0 else 0
+            c = (self._char_index + self._char_index) % 26
+            l = (self._lacuna_index + self._lacuna_index) % 26
+            pos = False
+            if l in self.cipher[False].get():
+                pos = self.cipher[False].get().index(l)
+                if c in self.cipher[True].get():
+                    pos = self.cipher[True].get().index(c)
 
-            self.table = not self.table if (self._char_index % 2) == 0 else self.table
+            elif l in self.cipher[True].get():
+                pos = self.cipher[True].get().index(l)
+                if c in self.cipher[False].get():
+                    pos = self.cipher[False].get().index(c)
 
-            """
-            Condition 1. If we use the alternate character, change the nature of the table
-            """
-            if self.use_alt and self.uses_alt:
-                self.table = not self.table if self.index % 2 == 0 else self.table
-                self.position = 'tr'
-                self.table, self.position = (not self.table, 'tl') if self.xor else (self.table, self.position)
+            if pos:
+                self.table = not self.table
+                self.position = Square.ORDER[pos]
 
-            """
-            Condition 2. If the current polarity of the character is True, flip positions
-            """
-            if self.xor:
-                self.position = {
-                    'tl': 'br',
-                    'br': 'tl',
-                    'tr': 'bl',
-                    'bl': 'tr',
-                }[self.position]
+            # ------------------------------------------------------------
+            # Go back to top left if we're XOR and in the mixed character table
+            # then set a new calculation if we're not mod 5 (inverse 5 minute rule)
+            # ------------------------------------------------------------
+            if not self.table and self.binary:
+                self.position = 'tl'
+                self.algorithm += 0 if self._char_index % 5 == 0 else 1
 
-            """
-            Primary Rule 1. If not cipher character visible and not lacuna character visible
-            """
-            if not self.cipher_active and not self.lacuna_active:
-                # ------------------------------------------------------------
-                # Sub rule 1 - Current characters Z Lacuna exists in either table
-                # ------------------------------------------------------------
-                c = (self._char_index + self._char_index) % 26
-                l = (self._lacuna_index + self._lacuna_index) % 26
-                pos = False
-                if l in self.cipher[False].get():
-                    pos = self.cipher[False].get().index(l)
-                    if c in self.cipher[True].get():
-                        pos = self.cipher[True].get().index(c)
+            # ------------------------------------------------------------
+            # Map current position on to deciphering algorithm index
+            # ------------------------------------------------------------
+            five_minute = self.index % 5 == 0 and self.table
+            tl_direction = self.table and not self.binary and not self.polarity
 
-                elif l in self.cipher[True].get():
-                    pos = self.cipher[True].get().index(l)
-                    if c in self.cipher[False].get():
-                        pos = self.cipher[False].get().index(c)
-
-                if pos:
+            if self.polarity and not self.mapped:
+                if self.can_replace(helpers.i2a(self.index % 26)):
                     self.table = not self.table
-                    self.position = Square.ORDER[pos]
+                    self.algorithm += 3
 
-                # ------------------------------------------------------------
-                # Go back to top left if we're XOR and in the mixed character table
-                # then set a new calculation if we're not mod 5 (inverse 5 minute rule)
-                # ------------------------------------------------------------
-                if not self.table and self.xor:
-                    self.position = 'tl'
-                    self._calculation_index += 0 if self._char_index % 5 == 0 else 1
+            self.algorithm += {
+                'tl': 2 if tl_direction and not five_minute else 0,
+                'br': 0 if self.table else 0,
+                'tr': 0 if self.table else 0,
+                'bl': 0 if self.table else 0,
+                False: 0,
+            }[self.position]
+        elif self.cipher_active and not self.lacuna_active:
+            """
+            Primary Rule 2. If cipher character is visible and lacuna character is not visible
+            """
+            self.position = self.unpack_active(
+                self.cipher[True].cipher_active,
+                self.cipher[False].cipher_active,
+            )
+        elif self.lacuna_active and not self.cipher_active:
+            """
+            Primary Rule 3. If lacuna character is visible and cipher character is not visible
+            """
+            self.position = self.unpack_active(
+                self.cipher[True].lacuna_active,
+                self.cipher[False].lacuna_active,
+                True
+            )
+        elif self.cipher_active and self.lacuna_active:
+            """
+            Primary Rule 4. If cipher character is visible and lacuna character is not visible
+            """
+            a = self.unpack_active(
+                self.cipher[True].cipher_active,
+                self.cipher[False].cipher_active,
+            )
+            b = self.unpack_active(
+                self.cipher[True].lacuna_active,
+                self.cipher[False].lacuna_active,
+                True
+            )
+            self.position = 'tl' if a == b else 'br'
 
-                # ------------------------------------------------------------
-                # Map current position on to deciphering algorithm index
-                # ------------------------------------------------------------
-                five_minute = self.index % 5 == 0 and self.table
-                tl_direction = self.table and not self.xor and not self.use_alt
-
-                if self.use_alt and not self.uses_alt:
-                    if self.can_replace(helpers.i2a(self.index % 26)):
-                        self.table = not self.table
-                        self._calculation_index += 3
-
-                self._calculation_index += {
-                    'tl': 2 if tl_direction and not five_minute else 0,
-                    'br': 0 if self.table else 0,
-                    'tr': 0 if self.table else 0,
-                    'bl': 0 if self.table else 0,
-                    False: 0,
-                }[self.position]
-            elif self.cipher_active and not self.lacuna_active:
-                """
-                Primary Rule 2. If cipher character is visible and lacuna character is not visible
-                """
-                self.position = self.unpack_active(
-                    self.cipher[True].cipher_active,
-                    self.cipher[False].cipher_active,
-                )
-            elif self.lacuna_active and not self.cipher_active:
-                """
-                Primary Rule 3. If lacuna character is visible and cipher character is not visible
-                """
-                self.position = self.unpack_active(
-                    self.cipher[True].lacuna_active,
-                    self.cipher[False].lacuna_active,
-                    True
-                )
-            elif self.cipher_active and self.lacuna_active:
-                """
-                Primary Rule 4. If cipher character is visible and lacuna character is not visible
-                """
-                a = self.unpack_active(
-                    self.cipher[True].cipher_active,
-                    self.cipher[False].cipher_active,
-                )
-                b = self.unpack_active(
-                    self.cipher[True].lacuna_active,
-                    self.cipher[False].lacuna_active,
-                    True
-                )
-                self.position = 'tl' if a == b else 'br'
-
-            # ============================================================================
-            # END RULES
-            # ============================================================================
-            self._intermediate = helpers.i2a(self.cipher[self.table].active(self.position))
-            for key in self.cipher.keys():
-                self.cipher[key].mark_lacuna(self._intermediate)
+        # ============================================================================
+        # END RULES
+        # ============================================================================
+        self._intermediate = helpers.i2a(self.cipher[self.table].active(self.position))
+        for key in self.cipher.keys():
+            self.cipher[key].mark_lacuna(self._intermediate)
         return self._intermediate
 
     def unpack_active(self, even_active, mixed_active, lacuna=False):
@@ -372,7 +376,7 @@ class Character(object):
         """
         self.table = not self.table if self._char_index % 2 != 0 else self.table
 
-        if not self.uses_alt:
+        if not self.mapped:
             self.table = not self.table if self.lacuna_active \
                 and (even_active and not mixed_active) \
                 else self.table
@@ -381,28 +385,69 @@ class Character(object):
         # SECONDARY RULES
         # ============================================================================
         order_table_even = {
-            'tl': 0 if lacuna and self.index % 2 == 0 else 1,
+            # 1:
+            # 2:
+            # 3:
+            # 4:
+            'tl': 1 if lacuna and self.index % 2 == 0 \
+                    else 1,
+
+            # 1:
+            # 2:
+            # 3:
+            # 4:
             'br': 2,
-            'tr': 3 if lacuna and (self.index % 2) != 0 else 1,
+            # 1:
+            # 2:
+            # 3: 71
+            # 4:
+            'tr': 3 if lacuna and (self.index % 2) != 0 \
+                    else 1,
+            # 1:
+            # 2: 29, 69
+            # 3:
+            # 4:
             'bl': 2 if lacuna and (self.index % 2) != 0 \
-                else 1 if not lacuna and (self.xor and not self.use_alt) and (self.index % 2) != 0 \
-                else 1,
+                    else 1 if not lacuna and (
+                        self.binary and not self.polarity
+                    ) and (self.index % 2) != 0 \
+                    else 1,
             False: 0,
         }[even_active]
 
         order_table_mixed = {
-            'tl': 3 if self.xor and self.table and not self.use_alt and even_active \
+            # 1:
+            # 2:
+            # 3:
+            # 4:
+            'tl': 3 if self.binary and self.table and not self.polarity and even_active \
                 else 0 if self.index % 2 == 0 \
-                else 3 if self.xor and self.use_alt else 2,
+                else 3 if self.binary and self.polarity \
+                else 2,
+            # 1:
+            # 2:
+            # 3:
+            # 4:
             'br': 2,
-            'tr': 2 if self.table and not self.use_alt  else \
-                0 if not lacuna else \
-                1 if self.index % 5 == 0 else 3,
-            'bl': 3 if self.table or not lacuna else 1 if self.xor and self.use_alt else 2,
+            # 1:
+            # 2:
+            # 3:
+            # 4:
+            'tr': 2 if self.table and not self.polarity  \
+                    else 0 if not lacuna \
+                    else 1 if self.index % 5 == 0 \
+                    else 3,
+            # 1:
+            # 2:
+            # 3:
+            # 4:
+            'bl': 3 if self.table or not lacuna \
+                    else 1 if self.binary and self.polarity \
+                    else 2,
             False: 0,
         }[mixed_active]
 
-        self._calculation_index += sum([order_table_even, order_table_mixed]) % 4
+        self.algorithm += sum([order_table_even, order_table_mixed]) % 4
         validate = even_active if not mixed_active else mixed_active
 
         if even_active and mixed_active:
@@ -413,7 +458,8 @@ class Character(object):
                 'tlbr': 'tl',
                 'trbr': 'bl',
                 'brtr': 'tl',
-                'bltl': 'tr' if self.xor and self.use_alt else 'bl',
+                'bltl': 'tr' if self.binary and self.polarity \
+                        else 'bl',
             }[validate]
 
         # 5 minute rule
@@ -428,14 +474,16 @@ class Character(object):
             print(validate)
 
         return {
-            'tl': 'bl' if self.index % 2 == 0 else 'br',
+            'tl': 'bl' if self.index % 2 == 0 \
+                    else 'br',
             'tr': 'bl',
-            'bl': 'br' if (self.table and not self.uses_alt) else \
-                'bl' if not self.use_alt and self.xor else 'tl',
+            'bl': 'br' if (self.table and not self.mapped) \
+                    else 'bl' if not self.polarity and self.binary \
+                    else 'tl',
             'br': 'tr',
         }[
             validate
-            if not self.uses_alt or not self.xor else self.position
+            if not self.mapped or not self.binary else self.position
         ]
 
     def transcribe(self, position, character):

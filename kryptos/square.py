@@ -19,8 +19,8 @@ class Square(object):
 
     lacuna_active = False
     cipher_active = False
-    alt_active    = False
-    use_alt       = False
+    mapped    = False
+    map       = False
 
     polarity      = False
     table         = None
@@ -28,13 +28,12 @@ class Square(object):
         'tl', 'tr', 'br', 'bl'
     ]
 
-    def __init__(self, character, polarity, use_alt, ciphertext):
+    def __init__(self, character, polarity, map, ciphertext):
         self.character = character
         character_index = helpers.a2i(character)
         self.table = Table(ciphertext, polarity)
-        self.use_alt = use_alt
+        self.map = map
         self.tl = self.bl = self.tr = self.br = ''
-
 
     def plot(self):
         """
@@ -44,22 +43,22 @@ class Square(object):
         self.table.create()
         self.replace = self.table.keys['replace']
 
-        alt_char = self.replace[self.character] \
-            if self.use_alt and self.character in self.replace.keys() \
+        mapchar = self.replace[self.character] \
+            if self.map and self.character in self.replace.keys() \
             else self.character
 
-        self.alt_active = alt_char != self.character
+        self.mapped = mapchar != self.character
 
         top    = [
             i for i in range(
                 len(self.table.keys['top'])
-            ) if alt_char in self.table.keys['top'][i]
+            ) if mapchar in self.table.keys['top'][i]
         ][0] + 1
 
         right  = [
             i for i in range(
                 len(self.table.keys['right'])
-            ) if alt_char in self.table.keys['right'][i]
+            ) if mapchar in self.table.keys['right'][i]
         ][0] + 1
 
         bottom = [
