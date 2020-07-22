@@ -121,9 +121,9 @@ class Cipher(object):
         primary = {
             'ArrowLeft':  self._cindex - 1 if self._cindex > 0 else len(self) - 1,
             'ArrowRight': self._cindex + 1 if self._cindex < len(self)-1 else 0,
-            'PageUp': self._cindex + pagesize if (self._cindex + pagesize) < len(self)-1 \
+            'PageDown': self._cindex + pagesize if (self._cindex + pagesize) < len(self)-1 \
                 else 0 + ((self._cindex + pagesize) - len(self)),
-            'PageDown': self._cindex - pagesize if (self._cindex - pagesize) >= 0 \
+            'PageUp': self._cindex - pagesize if (self._cindex - pagesize) >= 0 \
                 else (len(self) - (pagesize - self._cindex)),
             'Home':  0,
             'End': len(self) - 1,
@@ -142,7 +142,6 @@ class Cipher(object):
         right      = Output()
         properties = Output()
         conditions = Output()
-        decipher   = Output()
         deciphered = Output()
 
         tables = {
@@ -154,14 +153,16 @@ class Cipher(object):
             for i, character in zip(range(len(characters)), characters):
                 partial = Output()
                 df = self[self._cindex].all_positions(helpers.i2a(character))
-                df = df.style.set_caption(
+                style = df.style.set_caption(
                     '{} ({})'.format(character, helpers.i2a(character))
                 ).set_table_attributes(
                     'style="font-size: 10px"'
-                )
+                ).hide_index()
+                if self[self._cindex].table == key and df.equals(self[self._cindex].all_positions()):
+                    style.set_properties(**{'background-color': '#00FF00'})
 
                 with partial:
-                    display.display(df)
+                    display.display(style)
                 tables[key].append(partial)
 
         with left:
@@ -190,16 +191,6 @@ class Cipher(object):
                     )
             )
 
-        with decipher:
-            display.display(
-                self[self._cindex]
-                    .all_positions()
-                    .style.set_caption('Selected')
-                    .set_table_attributes(
-                        'style="font-size: 10px"'
-                    )
-            )
-
         with deciphered:
             display.display(self.as_dataframe())
 
@@ -209,7 +200,7 @@ class Cipher(object):
         self._hbox.children = [left, right]
         self._inner.children = [
             self._hbox,
-            HBox([VBox([properties, conditions]), decipher, subtables, deciphered]),
+            HBox([VBox([properties, conditions]), subtables, deciphered]),
             globalout
         ]
         self._html.value = '<h3>Current character {}, index {}, deciphered to {}</h3>'.format(

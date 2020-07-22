@@ -5,3 +5,5 @@ from .character import Character
 from .cipher import Cipher
 from .rulesengine import RulesEngine
 from . import helpers
+
+helpers.rulesengine = RulesEngine

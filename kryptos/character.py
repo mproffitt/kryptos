@@ -44,30 +44,30 @@ class Character(object):
         False: None,
     }
 
-    index              = 0
-    character          = ''
-    lacuna             = ''
-    deciphered         = ''
-    table              = None
-    binary                = None
-    polarity            = False
-    cipher_active      = False
-    lacuna_active      = False
-    map_cipher         = {}
-    _position          = None
-    _intermediate      = None
-    algorithm = 0
-    _char_index        = 0
-    _lacuna_index      = 0
+    index         = 0
+    character     = ''
+    lacuna        = ''
+    deciphered    = ''
+    binary        = None
+    polarity      = False
+    cipher_active = False
+    lacuna_active = False
+    map_cipher    = {}
+    _algorithm    = 0
+    _table        = False
+    _position     = None
+    _intermediate = None
+    _char_index   = 0
+    _lacuna_index = 0
 
     def __init__(self, character, index, polarity, ciphertext):
         self.index     = index
         self.character = character.upper()
         self.lacuna    = helpers.distancefrom(self.character, 'Z')
-        self.polarity   = polarity
-
+        self.polarity  = polarity
         self._char_index   = helpers.a2i(self.character)
         self._lacuna_index = helpers.a2i(self.lacuna)
+        self.binary        = self._char_index % 2 == 0
 
         # ------------------------------------------------------------
         # Create a Square object for each character in the cipher
@@ -82,7 +82,6 @@ class Character(object):
         # polarity, then build the tables and move to find the
         # intermediate character.
         # ------------------------------------------------------------
-        self.binary = self._char_index % 2 == 0
         _ = [table.plot() for _, table in self.cipher.items()]
         _ = self.decipher
 
@@ -91,6 +90,22 @@ class Character(object):
 
     def __repr__(self):
         return str(self)
+
+    @property
+    def cindex(self):
+        return self._char_index
+
+    @property
+    def lindex(self):
+        return self._lacuna_index
+
+    @property
+    def table(self):
+        return self._table
+
+    @table.setter
+    def table(self, table):
+        self._table = table
 
     @property
     def algorithm(self):
@@ -130,6 +145,7 @@ class Character(object):
             'mapped'        : self.mapped,
             'cipher_active' : self.cipher_active,
             'lacuna_active' : self.lacuna_active,
+            'algorithm'     : self.algorithm,
         }
         return pd.DataFrame(list(table.items()), columns=['Property', 'Value'])
 
@@ -151,6 +167,14 @@ class Character(object):
         return df
 
     @property
+    def rule(self):
+        rule = [str(a) for a in list(self.properties_table['Value'])]
+        for i in ['index', 'cipher', 'lacuna']:
+            for j in ['% 2', '% 5', '% 15']:
+                rule.append(str(self.condition_table[i][j]))
+        return pd.DataFrame([rule], columns=self.columns).drop('position', axis=1)
+
+    @property
     def columns(self):
         columns = list(self.properties_table['Property'])
         for i in ['index', 'cipher', 'lacuna']:
@@ -161,28 +185,18 @@ class Character(object):
         return columns
 
     @property
-    def rule(self):
-        rule = [str(a) for a in list(self.properties_table['Value'])]
-        for i in ['index', 'cipher', 'lacuna']:
-            for j in ['% 2', '% 5', '% 15']:
-                rule.append(str(self.condition_table[i][j]))
-        return pd.DataFrame([rule], columns=self.columns).drop('position', axis=1)
-
-    @property
     def cipher_active(self):
-        table = (
+        return (
             self.cipher[True].cipher_active,
             self.cipher[False].cipher_active
         )
-        return table if any(table) else False
 
     @property
     def lacuna_active(self):
-        table = (
+        return (
             self.cipher[True].lacuna_active,
             self.cipher[False].lacuna_active
         )
-        return table if any(table) else False
 
     @property
     def intermediate(self):
@@ -207,284 +221,11 @@ class Character(object):
         """
         Main decipher method
         """
-        if self._intermediate:
-            return self._intermediate
-
-        # ============================================================================
-        # RULES
-        # ----------------------------------------------------------------------------
-        # The following block sets the rules for the cipher location starting with the
-        # principle conditions for execution.
-        #
-        # Deciphering starts in the top left corner and moves around the table according
-        # to the rules matched for that character.
-        # ============================================================================
-        self.table = (self.index % 2 != 0)
-        self.position = 'tl'
-        # ------------------------------------------------------------
-        # algorithm is used to select which deciphering
-        #                    algorithm to choose from 4 possible
-        #                    options.
-        #
-        # The order of the calculation index is fixed as this maps
-        # directly to a list of  deciphering algorithms below.
-        #
-        # The order is as follows:
-        #   - 0: Nothing
-        #   - 1: (c + x) % 26
-        #   - 2: distancefrom(x, 'Z')
-        #   - 3: c + distancefrom(x, 'Z') % 26
-        # ------------------------------------------------------------
-        self.algorithm = 1 if not self.table or (self.table and self.binary) else 0
-        self.algorithm = 0 if self.mapped else self.algorithm
-        self.algorithm += 2 if self.can_replace(self.character) and not self.mapped else 0
-        self.algorithm += 1 if self.index % 15 == 0 else 0
-        self.algorithm += 1 if self._char_index % 5 == 0 else 0
-
-        self.table = not self.table if (self._char_index % 2) == 0 else self.table
-
-        """
-        Condition 1. If we use the alternate character, change the nature of the table
-        """
-        if self.polarity and self.mapped:
-            self.table = not self.table if self.index % 2 == 0 else self.table
-            self.position = 'tr'
-            self.table, self.position = (not self.table, 'tl') if self.binary else (self.table, self.position)
-
-        """
-        Condition 2. If the current polarity of the character is True, flip positions
-        """
-        if self.binary:
-            self.position = {
-                'tl': 'br',
-                'br': 'tl',
-                'tr': 'bl',
-                'bl': 'tr',
-            }[self.position]
-
-        """
-        Primary Rule 1. If not cipher character visible and not lacuna character visible
-        """
-        if not self.cipher_active and not self.lacuna_active:
-            # ------------------------------------------------------------
-            # Sub rule 1 - Current characters Z Lacuna exists in either table
-            # ------------------------------------------------------------
-            c = (self._char_index + self._char_index) % 26
-            l = (self._lacuna_index + self._lacuna_index) % 26
-            pos = False
-            if l in self.cipher[False].get():
-                pos = self.cipher[False].get().index(l)
-                if c in self.cipher[True].get():
-                    pos = self.cipher[True].get().index(c)
-
-            elif l in self.cipher[True].get():
-                pos = self.cipher[True].get().index(l)
-                if c in self.cipher[False].get():
-                    pos = self.cipher[False].get().index(c)
-
-            if pos:
-                self.table = not self.table
-                self.position = Square.ORDER[pos]
-
-            # ------------------------------------------------------------
-            # Go back to top left if we're XOR and in the mixed character table
-            # then set a new calculation if we're not mod 5 (inverse 5 minute rule)
-            # ------------------------------------------------------------
-            if not self.table and self.binary:
-                self.position = 'tl'
-                self.algorithm += 0 if self._char_index % 5 == 0 else 1
-
-            # ------------------------------------------------------------
-            # Map current position on to deciphering algorithm index
-            # ------------------------------------------------------------
-            five_minute = self.index % 5 == 0 and self.table
-            tl_direction = self.table and not self.binary and not self.polarity
-
-            if self.polarity and not self.mapped:
-                if self.can_replace(helpers.i2a(self.index % 26)):
-                    self.table = not self.table
-                    self.algorithm += 3
-
-            self.algorithm += {
-                'tl': 2 if tl_direction and not five_minute else 0,
-                'br': 0 if self.table else 0,
-                'tr': 0 if self.table else 0,
-                'bl': 0 if self.table else 0,
-                False: 0,
-            }[self.position]
-        elif self.cipher_active and not self.lacuna_active:
-            """
-            Primary Rule 2. If cipher character is visible and lacuna character is not visible
-            """
-            self.position = self.unpack_active(
-                self.cipher[True].cipher_active,
-                self.cipher[False].cipher_active,
-            )
-        elif self.lacuna_active and not self.cipher_active:
-            """
-            Primary Rule 3. If lacuna character is visible and cipher character is not visible
-            """
-            self.position = self.unpack_active(
-                self.cipher[True].lacuna_active,
-                self.cipher[False].lacuna_active,
-                True
-            )
-        elif self.cipher_active and self.lacuna_active:
-            """
-            Primary Rule 4. If cipher character is visible and lacuna character is not visible
-            """
-            a = self.unpack_active(
-                self.cipher[True].cipher_active,
-                self.cipher[False].cipher_active,
-            )
-            b = self.unpack_active(
-                self.cipher[True].lacuna_active,
-                self.cipher[False].lacuna_active,
-                True
-            )
-            self.position = 'tl' if a == b else 'br'
-
-        # ============================================================================
-        # END RULES
-        # ============================================================================
-        self._intermediate = helpers.i2a(self.cipher[self.table].active(self.position))
+        if not self._intermediate:
+            self._intermediate = helpers.rulesengine.apply_rules(self)
         for key in self.cipher.keys():
             self.cipher[key].mark_lacuna(self._intermediate)
         return self._intermediate
-
-    def unpack_active(self, even_active, mixed_active, lacuna=False):
-        """
-        Used to determine the additional rules surrounding any combination
-        of cipher and lacuna visibility in the tables.
-
-        :param: string|bool even_active   if not False, represents the visibility of the cipher
-                                          or lacuna character in the even numbered table
-        :param: string|bool lacuna:active if not False, represents the visibility of the cipher
-                                          or lacuna character in the mixed polarity table
-
-        :return: string
-
-        The presence of one or both of these characters can drastically alter the result of the
-        final cipher.
-
-        This will return one of
-
-        - `tl` Top left
-        - `tr` Top right
-        - `br` Bottom right
-        - `bl` Bottom left
-        """
-        self.table = not self.table if self._char_index % 2 != 0 else self.table
-
-        if not self.mapped:
-            self.table = not self.table if self.lacuna_active \
-                and (even_active and not mixed_active) \
-                else self.table
-
-        # ============================================================================
-        # SECONDARY RULES
-        # ============================================================================
-        order_table_even = {
-            # 1:
-            # 2:
-            # 3:
-            # 4:
-            'tl': 1 if lacuna and self.index % 2 == 0 \
-                    else 1,
-
-            # 1:
-            # 2:
-            # 3:
-            # 4:
-            'br': 2,
-            # 1:
-            # 2:
-            # 3: 71
-            # 4:
-            'tr': 3 if lacuna and (self.index % 2) != 0 \
-                    else 1,
-            # 1:
-            # 2: 29, 69
-            # 3:
-            # 4:
-            'bl': 2 if lacuna and (self.index % 2) != 0 \
-                    else 1 if not lacuna and (
-                        self.binary and not self.polarity
-                    ) and (self.index % 2) != 0 \
-                    else 1,
-            False: 0,
-        }[even_active]
-
-        order_table_mixed = {
-            # 1:
-            # 2:
-            # 3:
-            # 4:
-            'tl': 3 if self.binary and self.table and not self.polarity and even_active \
-                else 0 if self.index % 2 == 0 \
-                else 3 if self.binary and self.polarity \
-                else 2,
-            # 1:
-            # 2:
-            # 3:
-            # 4:
-            'br': 2,
-            # 1:
-            # 2:
-            # 3:
-            # 4:
-            'tr': 2 if self.table and not self.polarity  \
-                    else 0 if not lacuna \
-                    else 1 if self.index % 5 == 0 \
-                    else 3,
-            # 1:
-            # 2:
-            # 3:
-            # 4:
-            'bl': 3 if self.table or not lacuna \
-                    else 1 if self.binary and self.polarity \
-                    else 2,
-            False: 0,
-        }[mixed_active]
-
-        self.algorithm += sum([order_table_even, order_table_mixed]) % 4
-        validate = even_active if not mixed_active else mixed_active
-
-        if even_active and mixed_active:
-            validate = even_active + mixed_active
-            if validate in ['bltl',]:
-                self.table = not self.table
-            return {
-                'tlbr': 'tl',
-                'trbr': 'bl',
-                'brtr': 'tl',
-                'bltl': 'tr' if self.binary and self.polarity \
-                        else 'bl',
-            }[validate]
-
-        # 5 minute rule
-        if self.index % 2 != 0 and self._char_index % 5 == 0:
-            validate = 'br' if even_active and not mixed_active else validate
-
-        even = even_active and not mixed_active
-        even_table = even and self.table
-        mixed_table = not even and self.table
-
-        if self.index == 14:
-            print(validate)
-
-        return {
-            'tl': 'bl' if self.index % 2 == 0 \
-                    else 'br',
-            'tr': 'bl',
-            'bl': 'br' if (self.table and not self.mapped) \
-                    else 'bl' if not self.polarity and self.binary \
-                    else 'tl',
-            'br': 'tr',
-        }[
-            validate
-            if not self.mapped or not self.binary else self.position
-        ]
 
     def transcribe(self, position, character):
         """

@@ -5,6 +5,15 @@ class Square(object):
     """
     Used to calculate the shape of the grid to plot on the dataframe
     """
+    TL = 'tl'
+    TR = 'tr'
+    BR = 'br'
+    BL = 'bl'
+
+    ORDER = [
+        'tl', 'tr', 'br', 'bl'
+    ]
+
     tl            = ''
     bl            = ''
     tr            = ''
@@ -24,10 +33,6 @@ class Square(object):
 
     polarity      = False
     table         = None
-    ORDER         = [
-        'tl', 'tr', 'br', 'bl'
-    ]
-
     def __init__(self, character, polarity, map, ciphertext):
         self.character = character
         character_index = helpers.a2i(character)
