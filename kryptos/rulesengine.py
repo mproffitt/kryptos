@@ -2,77 +2,8 @@ from . import helpers
 from . import Square
 
 class RulesEngine:
-    """
-    Forms the principle of defining the rules of the cipher
-    """
-    @staticmethod
-    def table(character):
-        table = (character.index % 2) != 0
-        if character.binary and character.polarity:
-            table = not character.table
-
-        if character.polarity and character.mapped:
-            table = not table if (character.index % 2 == 0) else table
-            table = not table if character.binary else table
-
-        if character.binary and all(character.cipher_active):
-            table = not table
-        return table
-
-    @staticmethod
-    def position(character):
-        position = 0
-        for property in ['binary', 'polarity', 'mapped', 'cipher_active', 'lacuna_active']:
-            condition = getattr(character, property)
-            position += {
-                'binary'   : 2 if character.binary else 0,
-                'polarity' : 1 if character.polarity and character.binary else 0,
-                'mapped'   : 1 if character.mapped else 0,
-                'cipher_active': sum([RulesEngine.calculate(item, character.binary) for item in character.cipher_active]),
-                'lacuna_active': sum([RulesEngine.calculate(item, character.binary) for item in character.lacuna_active]),
-            }[property]
-        return Square.ORDER[position % 4]
-
-    @staticmethod
-    def algorithm(character):
-        algorithm  = 0
-        for property in ['index', 'cindex', 'lindex']:
-            for condition in [2, 5, 15]:
-                if getattr(character, property) % condition == 0:
-                    algorithm += {
-                        'cindex': sum([RulesEngine.calculate(item, character.binary) for item in character.cipher_active]),
-                        'lindex': sum([RulesEngine.calculate(item, character.binary) for item in character.lacuna_active]),
-                        'index' : RulesEngine.calculate(False, character.binary)
-                    }[property]
-        if any(character.lacuna_active) and character.binary:
-            algorithm += 2
-
-        if all(character.cipher_active) and character.binary:
-            algorithm += 1
-
-        return algorithm % 4
-
-    @staticmethod
-    def calculate(position, binary):
-        if position:
-            return {
-                'tl': 1 if binary else 0,
-                'tr': 1 if binary else 1,
-                'br': 1 if binary else 0,
-                'bl': 0 if binary else 1,
-            }[position]
-        return 2 if binary else 1
-
     @staticmethod
     def apply_rules(character):
-        return RulesEngine.old_apply_rules(character)
-        character.table = RulesEngine.table(character)
-        character.position = RulesEngine.position(character)
-        character.algorithm = RulesEngine.algorithm(character)
-        return helpers.i2a(character.cipher[character.table].active(character.position))
-
-    @staticmethod
-    def old_apply_rules(character):
         # ============================================================================
         # RULES
         # ----------------------------------------------------------------------------
@@ -83,6 +14,22 @@ class RulesEngine:
         # to the rules matched for that character.
         # ============================================================================
         character.table = (character.index % 2 != 0)
+        character.table = not character.table if (character.cindex % 2) == 0 else character.table
+
+        # I really do not like these next two rules. They seem **too** convoluted...
+        character.table = not character.table if not character.table \
+                and character.binary \
+                and character.polarity \
+                and all(character.cipher_active) \
+                and not any(character.lacuna_active) \
+            else character.table
+
+        if any(character.cipher_active) and not any(character.lacuna_active):
+            character.table = not character.table if character.lindex % 2 == 0 \
+                    and character.lindex % 5 == 0 \
+                    and not character.polarity \
+                else character.table
+
         character.position = 'tl'
         # ------------------------------------------------------------
         # algorithm is used to select which deciphering
@@ -102,9 +49,8 @@ class RulesEngine:
         character.algorithm = 0 if character.mapped else character.algorithm
         character.algorithm += 2 if character.can_replace(character.character) and not character.mapped else 0
         character.algorithm += 1 if character.index % 15 == 0 else 0
-        character.algorithm += 1 if character._char_index % 5 == 0 else 0
+        character.algorithm += 1 if character.cindex % 5 == 0 else 0
 
-        character.table = not character.table if (character._char_index % 2) == 0 else character.table
 
         """
         Condition 1. If we use the alternate character, change the nature of the table
@@ -128,12 +74,12 @@ class RulesEngine:
         """
         Primary Rule 1. If not cipher character visible and not lacuna character visible
         """
-        if not all(character.cipher_active) and not all(character.lacuna_active):
+        if not any(character.cipher_active) and not any(character.lacuna_active):
             # ------------------------------------------------------------
             # Sub rule 1 - Current characters Z Lacuna exists in either table
             # ------------------------------------------------------------
-            c = (character._char_index + character._char_index) % 26
-            l = (character._lacuna_index + character._lacuna_index) % 26
+            c = (character.cindex + character.cindex) % 26
+            l = (character.lindex + character.lindex) % 26
             pos = False
             if l in character.cipher[False].get():
                 pos = character.cipher[False].get().index(l)
@@ -155,7 +101,8 @@ class RulesEngine:
             # ------------------------------------------------------------
             if not character.table and character.binary:
                 character.position = 'tl'
-                character.algorithm += 0 if character._char_index % 5 == 0 else 1
+                character.algorithm += 0 if character.cindex % 5 == 0 else 1
+                character.algorithm += 1 if character.index % 2 != 0 and character.index % 5 == 0 else 0
 
             # ------------------------------------------------------------
             # Map current position on to deciphering algorithm index
@@ -166,16 +113,17 @@ class RulesEngine:
             if character.polarity and not character.mapped:
                 if character.can_replace(helpers.i2a(character.index % 26)):
                     character.table = not character.table
+                    character.position = 'tl' if character.lindex % 5 == 0 else 'br'
                     character.algorithm += 3
 
             character.algorithm += {
-                'tl': 2 if tl_direction and not five_minute else 0,
+                'tl': 2 if tl_direction and not five_minute else  0,
                 'br': 0,
-                'tr': 0,
+                'tr': 2 if character.index % 5 == 0 else 0,
                 'bl': 0,
                 False: 0,
             }[character.position]
-        elif any(character.cipher_active) and not all(character.lacuna_active):
+        elif any(character.cipher_active) and not any(character.lacuna_active):
             """
             Primary Rule 2. If cipher character is visible and lacuna character is not visible
             """
@@ -184,7 +132,7 @@ class RulesEngine:
                 character.cipher[True].cipher_active,
                 character.cipher[False].cipher_active,
             )
-        elif any(character.lacuna_active) and not all(character.cipher_active):
+        elif any(character.lacuna_active) and not any(character.cipher_active):
             """
             Primary Rule 3. If lacuna character is visible and cipher character is not visible
             """
@@ -242,10 +190,10 @@ class RulesEngine:
         - `br` Bottom right
         - `bl` Bottom left
         """
-        character.table = not character.table if character._char_index % 2 != 0 else character.table
+        character.table = not character.table if character.cindex % 2 != 0 else character.table
 
         if not character.mapped:
-            character.table = not character.table if character.lacuna_active \
+            character.table = not character.table if any(character.lacuna_active) \
                 and (even_active and not mixed_active) \
                 else character.table
 
@@ -253,28 +201,11 @@ class RulesEngine:
         # SECONDARY RULES
         # ============================================================================
         order_table_even = {
-            # 1:
-            # 2:
-            # 3:
-            # 4:
             'tl': 1 if lacuna and character.index % 2 == 0 \
                     else 1,
-
-            # 1:
-            # 2:
-            # 3:
-            # 4:
             'br': 2,
-            # 1:
-            # 2:
-            # 3: 71
-            # 4:
             'tr': 3 if lacuna and (character.index % 2) != 0 \
                     else 1,
-            # 1:
-            # 2: 29, 69
-            # 3:
-            # 4:
             'bl': 2 if lacuna and (character.index % 2) != 0 \
                     else 1 if not lacuna and (
                         character.binary and not character.polarity
@@ -283,32 +214,18 @@ class RulesEngine:
             False: 0,
         }[even_active]
 
+
+        not_fifteen = (character.index % 5 == 0) and (character.index % 15 != 0)
         order_table_mixed = {
-            # 1:
-            # 2:
-            # 3:
-            # 4:
             'tl': 3 if character.binary and character.table and not character.polarity and even_active \
                 else 0 if character.index % 2 == 0 \
                 else 3 if character.binary and character.polarity \
                 else 2,
-            # 1:
-            # 2:
-            # 3:
-            # 4:
             'br': 2,
-            # 1:
-            # 2:
-            # 3:
-            # 4:
-            'tr': 2 if character.table and not character.polarity  \
+            'tr': 2 if (character.table and not character.polarity)
                     else 0 if not lacuna \
                     else 1 if character.index % 5 == 0 \
                     else 3,
-            # 1:
-            # 2:
-            # 3:
-            # 4:
             'bl': 3 if character.table or not lacuna \
                     else 1 if character.binary and character.polarity \
                     else 2,
@@ -331,20 +248,17 @@ class RulesEngine:
             }[validate]
 
         # 5 minute rule
-        if character.index % 2 != 0 and character._char_index % 5 == 0:
+        if character.index % 2 != 0 and character.cindex % 5 == 0:
             validate = 'br' if even_active and not mixed_active else validate
 
         even = even_active and not mixed_active
         even_table = even and character.table
         mixed_table = not even and character.table
 
-        if character.index < 2:
-            print(character.index)
         return {
             'tl': 'bl' if character.index % 2 == 0 \
                     else 'br',
-            'tr': 'bl' if character.index % 2 == 0 \
-                    else 'tl',
+            'tr': 'bl',
             'bl': 'br' if (character.table and not character.mapped) \
                     else 'bl' if not character.polarity and character.binary \
                     else 'tl',

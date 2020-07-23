@@ -126,6 +126,18 @@ class Character(object):
         )
 
     @property
+    def totals(self):
+        a = sum(self.cipher[True].get())
+        b = sum(self.cipher[False].get())
+        return (
+            a, b,
+            (a + b),
+            (a + b) % 26,
+            (a + b) % 60,
+            ((a + b) % 60) % 26,
+        )
+
+    @property
     def mapped(self):
         return all([self.cipher[True].mapped, self.cipher[False].mapped])
 
@@ -146,6 +158,7 @@ class Character(object):
             'cipher_active' : self.cipher_active,
             'lacuna_active' : self.lacuna_active,
             'algorithm'     : self.algorithm,
+            'totals'        : self.totals,
         }
         return pd.DataFrame(list(table.items()), columns=['Property', 'Value'])
 

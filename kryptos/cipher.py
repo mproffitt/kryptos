@@ -178,7 +178,7 @@ class Cipher(object):
                         'style="font-size: 10px"'
                     ).set_properties(
                         subset=['Value'],
-                        **{'width': '60px'}
+                        **{'width': '120px'}
                     )
             )
 
@@ -203,8 +203,11 @@ class Cipher(object):
             HBox([VBox([properties, conditions]), subtables, deciphered]),
             globalout
         ]
-        self._html.value = '<h3>Current character {}, index {}, deciphered to {}</h3>'.format(
+        self._html.value = '<h3>Current character {} ({}), lacuna {} ({}) index {}, deciphered to {}</h3>'.format(
             self[self._cindex].character,
+            self[self._cindex].cindex,
+            self[self._cindex].lacuna,
+            self[self._cindex].lindex,
             self._cindex + 1,
             str(self[self._cindex])
         )
