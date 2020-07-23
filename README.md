@@ -5,7 +5,7 @@ To run this notebook you will need a Python 3 environment with the Pandas Datafr
 
 Alternatively, you may use the online service 'Binder' to execute the notebook.
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/mproffitt/kryptos.git/master?filepath=kryptos-k4.ipynb)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/mproffitt/kryptos.git/develop?filepath=kryptos-k4.ipynb)
 
 If you are using Binder, please note that it may take a moment or two to start the notebook.
 

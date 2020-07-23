@@ -227,7 +227,7 @@ class RulesEngine:
                     else 1 if character.index % 5 == 0 \
                     else 3,
             'bl': 3 if character.table or not lacuna \
-                    else 1 if character.binary and character.polarity \
+                    else 1 if (character.binary and character.polarity) or (character.table and character.polarity) \
                     else 2,
             False: 0,
         }[mixed_active]
