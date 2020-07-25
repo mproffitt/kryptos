@@ -160,6 +160,7 @@ class Cipher(object):
         properties = Output()
         conditions = Output()
         deciphered = Output()
+        tablekey   = Output()
 
         tables = {
             True:  [],
@@ -191,8 +192,6 @@ class Cipher(object):
                     ).set_properties(
                         subset=['Value'],
                         **{'width': '120px'}
-                    ).set_properties(
-                        **{'background-color': '#D291BC'}
                     ).hide_index()
             )
 
@@ -203,13 +202,14 @@ class Cipher(object):
                 df.style.set_caption('Conditions')
                     .set_table_attributes(
                         'style="font-size: 10px"'
-                    ).set_properties(
-                        **{'background-color': '#85E3FF'}
                     ).hide_index()
             )
 
         with deciphered:
             display.display(self.as_dataframe())
+
+        with tablekey:
+            display.display(self.table_key)
 
         with left:
             display.display(self[self._cindex].cipher[True].apply)
@@ -222,7 +222,7 @@ class Cipher(object):
         self._hbox.children = [left, right]
         self._inner.children = [
             self._hbox,
-            HBox([VBox([properties, conditions]), subtables, deciphered]),
+            HBox([VBox([properties, conditions]), subtables, VBox([deciphered, tablekey])]),
             globalout
         ]
         self._html.value = '<h3>Current character {} ({}), lacuna {} ({}) index {}, deciphered to {}</h3>'.format(
@@ -233,6 +233,36 @@ class Cipher(object):
             self._cindex + 1,
             str(self[self._cindex])
         )
+
+    @property
+    def table_key(self):
+        key = pd.DataFrame([
+            ['', 'Cipher character',],
+            ['', 'active character',],
+            ['', 'Cipher lacuna',],
+            ['', 'Active lacuna',],
+            ['', 'Both match',],
+            ['', 'Properties match',],
+            ['', 'Contitions match',],
+        ], columns=['Colour', 'Description'])
+        return key.style.applymap(
+                lambda _: 'background-color: #00FF00', pd.IndexSlice[0, 'Colour',]
+            ).applymap(
+                lambda _: 'background-color: #FF0000; color: #FFFFFF', pd.IndexSlice[1, 'Colour',]
+            ).applymap(
+                lambda _: 'background-color: #90EE90', pd.IndexSlice[2, 'Colour',]
+            ).applymap(
+                lambda _: 'background-color: #FBACA8', pd.IndexSlice[3, 'Colour',]
+            ).applymap(
+                lambda _: 'background-color: #EDC9AF', pd.IndexSlice[4, 'Colour',]
+            ).applymap(
+                lambda _: 'background-color: #D291BC', pd.IndexSlice[5, 'Colour',]
+            ).applymap(
+                lambda _: 'background-color: #85E3FF', pd.IndexSlice[6, 'Colour',]
+            ).set_table_attributes(
+                'style="font-size: 10px"'
+            ).hide_index().set_caption('Key')
+
 
     def as_dataframe(self, ciphertext=False):
         """

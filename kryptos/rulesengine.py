@@ -173,8 +173,6 @@ class RulesEngine:
         # END RULES
         # ============================================================================
         character._intermediate = helpers.i2a(character.cipher[character.table].active(character.position))
-        for key in character.cipher.keys():
-            character.cipher[key].mark_lacuna(character._intermediate)
         return character._intermediate
 
     @staticmethod

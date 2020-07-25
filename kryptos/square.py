@@ -119,7 +119,6 @@ class Square(object):
                 self._cipher = char
             else:
                 self.lacuna_active = pos
-                self.mark_lacuna(char)
         if recurse:
             self.markcipher(inverse, False)
 
@@ -152,14 +151,16 @@ class Square(object):
         """ Test if a given character exists here """
         return helpers.a2i(what) in self.get()
 
-    def mark_lacuna(self, character):
+    def position(self, what):
+        if self.contains(what):
+            return Square.ORDER[
+                self.get().index(helpers.a2i(what))
+            ]
+        return None
+
+    def mark_lacuna(self, position):
         """ Wrapper for Highlight.lacuna """
-        if isinstance(character, int):
-            character = helpers.i2a(character)
-        position = helpers.distancefrom(character, 'Z')
-        if self.contains(position):
-            position = Square.ORDER[self.get().index(helpers.a2i(position))]
-            self._lacuna = position
+        self._lacuna = position
 
     @property
     def gridref(self):
@@ -167,8 +168,9 @@ class Square(object):
 
     @property
     def apply(self):
+        self._highlight.active(self._active)
         self._highlight.cipher(self.cipher_active)
-        self._highlight.lacuna(self.lacuna_active)
-        if self._active:
-            self._highlight.active(self._active)
+        self._highlight.cipher_lacuna(self.lacuna_active)
+        if self._lacuna:
+            self._highlight.active_lacuna(self._lacuna)
         return self._highlight.apply()

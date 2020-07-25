@@ -13,16 +13,22 @@ class Highlighter(object):
     _cipher_pos = None
 
     def __init__(self, df, grid):
-        self._df = df
-        self._grid = grid
-        self._active_pos = []
-        self._cipher_pos = []
+        self._df            = df
+        self._grid          = grid
+        self._active_pos    = None
+        self._cipher_pos    = None
+        self._active_lacuna = None
+        self._cipher_lacuna = None
 
     def highlighty(self, df, color='yellow'):
         """ helper method for colouring grid cells in yellow """
         return 'background-color: {}'.format(color)
 
     def highlightr(self, df, color='#FF0000'):
+        """ helper method for colouring grid cells in red """
+        return 'background-color: {}; color: #FFFFFF'.format(color)
+
+    def highlightlr(self, df, color='#FBACA8'):
         """ helper method for colouring grid cells in red """
         return 'background-color: {}; color: #FFFFFF'.format(color)
 
@@ -39,6 +45,10 @@ class Highlighter(object):
         return 'background-color: {};'.format(color)
 
     def highlightg(self, df, color='#00FF00'):
+        """ helper method for colouring grid cells in green """
+        return 'background-color: {}'.format(color)
+
+    def highlightlg(self, df, color='#90EE90'):
         """ helper method for colouring grid cells in green """
         return 'background-color: {}'.format(color)
 
@@ -65,17 +75,13 @@ class Highlighter(object):
         This will set a given gridref as being an active cell for the ciphertext,
         colouring it red on the grid
         """
-        if pos and pos not in self._active_pos:
-            self._active_pos.append(pos)
+        self._active_pos = pos
 
-    def lacuna(self, pos):
-        """
-        marks a given cell as being a 'lacuna' of the current cipher character
+    def active_lacuna(self, pos):
+        self._active_lacuna = pos
 
-        :param: string pos
-        """
-        if pos and pos not in self._active_pos:
-            self._cipher_pos.append(pos)
+    def cipher_lacuna(self, pos):
+        self._cipher_lacuna = pos
 
     def cipher(self, pos):
         """
@@ -83,23 +89,16 @@ class Highlighter(object):
 
         :param: string pos
         """
-        if pos and pos not in self._cipher_pos:
-            self._cipher_pos.append(pos)
+        self._cipher_pos = pos
 
-    def _active(self, pos):
+    def _active(self, pos, function=None):
+        if not function:
+            function=self.highlightr
         {
-            'tl': lambda m: m.applymap(self.highlightr, subset=pd.IndexSlice[self._grid[1], self._grid[0]]),
-            'tr': lambda m: m.applymap(self.highlightr, subset=pd.IndexSlice[self._grid[1], self._grid[2]]),
-            'bl': lambda m: m.applymap(self.highlightr, subset=pd.IndexSlice[self._grid[3], self._grid[0]]),
-            'br': lambda m: m.applymap(self.highlightr, subset=pd.IndexSlice[self._grid[3], self._grid[2]]),
-        }[pos](self._applied)
-
-    def _cipher(self, pos):
-        {
-            'tl': lambda m: m.applymap(self.highlightg, subset=pd.IndexSlice[self._grid[1], self._grid[0]]),
-            'tr': lambda m: m.applymap(self.highlightg, subset=pd.IndexSlice[self._grid[1], self._grid[2]]),
-            'bl': lambda m: m.applymap(self.highlightg, subset=pd.IndexSlice[self._grid[3], self._grid[0]]),
-            'br': lambda m: m.applymap(self.highlightg, subset=pd.IndexSlice[self._grid[3], self._grid[2]]),
+            'tl': lambda m: m.applymap(function, subset=pd.IndexSlice[self._grid[1], self._grid[0]]),
+            'tr': lambda m: m.applymap(function, subset=pd.IndexSlice[self._grid[1], self._grid[2]]),
+            'bl': lambda m: m.applymap(function, subset=pd.IndexSlice[self._grid[3], self._grid[0]]),
+            'br': lambda m: m.applymap(function, subset=pd.IndexSlice[self._grid[3], self._grid[2]]),
         }[pos](self._applied)
 
     def apply(self):
@@ -107,6 +106,20 @@ class Highlighter(object):
         Applies the current grid to the dataframe and returns the style object for rendering.
         """
         self._applied = self.apply_grid()
-        _ = [self._cipher(pos) for pos in self._cipher_pos]
-        _ = [self._active(pos) for pos in self._active_pos]
+        # Set the active corner in red
+        if self._active_pos:
+            self._active(self._active_pos, function=self.highlightr)
+
+        # cipher goes green if available
+        if self._cipher_pos:
+            self._active(self._cipher_pos, function=self.highlightg)
+
+        # light red for active_lacuna if set
+        if self._active_lacuna:
+            self._active(self._active_lacuna, function=self.highlightlr)
+
+        # light green for cipher_lacuna
+        if self._cipher_lacuna:
+            self._active(self._cipher_lacuna, function=self.highlightlg)
+
         return self._applied

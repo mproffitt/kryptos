@@ -59,6 +59,7 @@ class Character(object):
     _intermediate = None
     _char_index   = 0
     _lacuna_index = 0
+    deciphered_lacuna = {}
 
     def __init__(self, character, index, polarity, ciphertext):
         self.index     = index
@@ -118,8 +119,12 @@ class Character(object):
     @property
     def final(self):
         self.algorithm = self.algorithm % 4
-        for key in self.cipher.keys():
-            self.cipher[key].mark_lacuna(self.intermediate)
+        if self.deciphered_lacuna:
+            self.cipher[
+                self.deciphered_lacuna['table']
+            ].mark_lacuna(
+                self.deciphered_lacuna['position']
+            )
         return (
             self.algorithm,
             self.transcribe(self.algorithm, self.decipher)
@@ -156,7 +161,6 @@ class Character(object):
             'mapped'        : self.mapped,
             'cipher_active' : self.cipher_active,
             'lacuna_active' : self.lacuna_active,
-            'algorithm'     : self.algorithm,
         }
 
     @property
@@ -224,6 +228,16 @@ class Character(object):
                 self.table
             ].active(where)
         )
+        self.deciphered_lacuna = {}
+        for table in self.cipher.keys():
+            value = helpers.distancefrom(self._intermediate, 'Z')
+            if self.cipher[table].contains(value):
+                self.deciphered_lacuna = {
+                    'position': self.cipher[table].position(value),
+                    'value': value,
+                    'table': table,
+                }
+                break
 
     @property
     def decipher(self):
@@ -232,8 +246,6 @@ class Character(object):
         """
         if not self._intermediate:
             self._intermediate = helpers.rulesengine.apply_rules(self)
-        for key in self.cipher.keys():
-            self.cipher[key].mark_lacuna(self._intermediate)
         return self._intermediate
 
     def transcribe(self, position, character):
