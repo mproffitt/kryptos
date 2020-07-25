@@ -26,9 +26,17 @@ class Highlighter(object):
         """ helper method for colouring grid cells in red """
         return 'background-color: {}; color: #FFFFFF'.format(color)
 
-    def highlightb(self, df, color='#0000FF'):
+    def highlightb(self, df, color='#85E3FF'):
         """ helper method for colouring grid cells in blue """
-        return 'background-color: {}; color: #FFFFFF'.format(color)
+        return 'background-color: {};'.format(color)
+
+    def highlightl(self, df, color='#D291BC'):
+        """ helper method for colouring grid cells in lilac """
+        return 'background-color: {};'.format(color)
+
+    def highlights(self, df, color='#EDC9AF'):
+        """ helper method for colouring grid cells in sand """
+        return 'background-color: {};'.format(color)
 
     def highlightg(self, df, color='#00FF00'):
         """ helper method for colouring grid cells in green """

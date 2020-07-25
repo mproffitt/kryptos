@@ -95,6 +95,14 @@ class RulesEngine:
                 character.table = not character.table
                 character.position = Square.ORDER[pos]
 
+            if character.index % 15 == 0 and character.index % 2 == 0:
+                character.position = 'bl'
+            elif character.table and not character.binary and not character.polarity:
+                if character.index % 2 == 0:
+                    character.position = 'tl'
+                elif character.index % 15 == 0:
+                    character.position = 'tr'
+
             # ------------------------------------------------------------
             # Go back to top left if we're XOR and in the mixed character table
             # then set a new calculation if we're not mod 5 (inverse 5 minute rule)
@@ -117,10 +125,12 @@ class RulesEngine:
                     character.algorithm += 3
 
             character.algorithm += {
-                'tl': 2 if tl_direction and not five_minute else  0,
+                'tl': 1 if all([not any(character.cipher_active), tl_direction, character.index % 2 == 0]) \
+                    else 2 if all([tl_direction, not five_minute]) \
+                    else 0,
                 'br': 0,
-                'tr': 2 if character.index % 5 == 0 else 0,
-                'bl': 0,
+                'tr': 2 if character.index % 5 == 0 and not tl_direction else 3 if character.index % 15 == 0 else 0,
+                'bl': 1 if character.index % 2 == 0 else 2,
                 False: 0,
             }[character.position]
         elif any(character.cipher_active) and not any(character.lacuna_active):
@@ -197,6 +207,14 @@ class RulesEngine:
                 and (even_active and not mixed_active) \
                 else character.table
 
+        all_mod_2 = all([
+            character.index % 2 == 0,
+            character.cindex % 2 == 0,
+            character.lindex % 2 == 0,
+        ])
+        if all_mod_2 and character.binary and character.cindex % 5 == 0:
+            character.table = not character.table if not character.polarity else character.table
+
         # ============================================================================
         # SECONDARY RULES
         # ============================================================================
@@ -207,25 +225,32 @@ class RulesEngine:
             'tr': 3 if lacuna and (character.index % 2) != 0 \
                     else 1,
             'bl': 2 if lacuna and (character.index % 2) != 0 \
-                    else 1 if not lacuna and (
-                        character.binary and not character.polarity
-                    ) and (character.index % 2) != 0 \
+                    else 3 if character.binary \
+                        and not character.polarity \
+                        and all_mod_2 \
+                        and character.table \
+                        and not all(character.lacuna_active)
                     else 1,
             False: 0,
         }[even_active]
 
-
+        #else 1 if character.table and character.polarity \
         not_fifteen = (character.index % 5 == 0) and (character.index % 15 != 0)
         order_table_mixed = {
-            'tl': 3 if character.binary and character.table and not character.polarity and even_active \
+            'tl': 3 if (character.binary and character.table
+                    and not character.polarity and even_active) \
+                else 3 if character.binary and character.polarity and character.index % 2 != 0 \
+                else 1 if character.index % 2 == 0 \
+                    and character.lindex % 5 == 0 \
+                    and character.polarity \
+                    and not character.binary \
                 else 0 if character.index % 2 == 0 \
-                else 3 if character.binary and character.polarity \
                 else 2,
             'br': 2,
-            'tr': 2 if (character.table and not character.polarity)
-                    else 0 if not lacuna \
-                    else 1 if character.index % 5 == 0 \
-                    else 3,
+            'tr': 3 if (character.cindex % 15 == 0 and not_fifteen and character.index % 5 == 0) \
+                else 2 if (character.table and not character.polarity) \
+                else 0 if not lacuna \
+                else 1 if character.index % 5 == 0 else 3,
             'bl': 3 if character.table or not lacuna \
                     else 1 if (character.binary and character.polarity) or (character.table and character.polarity) \
                     else 2,
@@ -243,8 +268,9 @@ class RulesEngine:
                 'tlbr': 'tl',
                 'trbr': 'bl',
                 'brtr': 'tl',
-                'bltl': 'tr' if character.binary and character.polarity \
-                        else 'bl',
+                'bltl': 'tr' if (character.binary and character.polarity) \
+                        or (character.table and character.binary and not any(character.lacuna_active)) \
+                    else 'bl',
             }[validate]
 
         # 5 minute rule
@@ -258,11 +284,12 @@ class RulesEngine:
         return {
             'tl': 'bl' if character.index % 2 == 0 \
                     else 'br',
-            'tr': 'bl',
+            'tr': 'bl' if not character.binary else 'tl',
             'bl': 'br' if (character.table and not character.mapped) \
+                        and not (all_mod_2 and character.cindex % 5 == 0 and not character.polarity)
                     else 'bl' if not character.polarity and character.binary \
                     else 'tl',
-            'br': 'tr',
+            'br': 'tr' if not character.binary or lacuna else 'bl',
         }[
             validate
             if not character.mapped or not character.binary else character.position

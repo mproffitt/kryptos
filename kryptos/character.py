@@ -149,22 +149,23 @@ class Character(object):
         """
         Return the properties of the current object as a pandas DataFrame
         """
-        table = {
+        return {
             'table'         : self.table,
             'binary'        : self.binary,
-            'position'      : self.position,
             'polarity'      : self.polarity,
             'mapped'        : self.mapped,
             'cipher_active' : self.cipher_active,
             'lacuna_active' : self.lacuna_active,
             'algorithm'     : self.algorithm,
-            'totals'        : self.totals,
         }
-        return pd.DataFrame(list(table.items()), columns=['Property', 'Value'])
+
+    @property
+    def properties_frame(self):
+        return pd.DataFrame(list(self.properties_table.items()), columns=['Property', 'Value'])
 
     @property
     def condition_table(self):
-        df = pd.DataFrame([
+        return [
             [
                 (self.index % 2) == 0, (self._char_index % 2 == 0), (self._lacuna_index % 2 == 0),
             ],
@@ -174,18 +175,13 @@ class Character(object):
             [
                 (self.index % 15) == 0, (self._char_index % 15 == 0), (self._lacuna_index % 15 == 0),
             ],
-        ])
-        df.columns = ['index', 'cipher', 'lacuna']
-        df.index   = ['% 2', '% 5', '% 15']
-        return df
+        ]
 
     @property
-    def rule(self):
-        rule = [str(a) for a in list(self.properties_table['Value'])]
-        for i in ['index', 'cipher', 'lacuna']:
-            for j in ['% 2', '% 5', '% 15']:
-                rule.append(str(self.condition_table[i][j]))
-        return pd.DataFrame([rule], columns=self.columns).drop('position', axis=1)
+    def condition_frame(self):
+        df = pd.DataFrame(self.condition_table, columns=['index', 'cipher', 'lacuna'])
+        df.index   = ['% 2', '% 5', '% 15']
+        return df
 
     @property
     def columns(self):

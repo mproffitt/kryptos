@@ -79,6 +79,7 @@ class Cipher(object):
         self._vbox = VBox([self._html, self._inner, self._label])
         self._event = Event(source=self._vbox, watched_events=['keydown'])
         self._event.on_dom_event(self.handle_event)
+        return self
 
     @property
     def length(self):
@@ -105,14 +106,22 @@ class Cipher(object):
     def handle_event(self, event):
         """ Jupyter ipyevents binding code """
         if 'code' in event.keys():
-            self.setposition(event['code'])
-            self._draw()
+            if event['shiftKey']:
+                event['code'] = 'Shift+' + event['code']
+            try:
+                self.setposition(event['code'])
+                self._draw()
+            except IndexError:
+                # If we're out of index, we're beyond the end of the cipher
+                # simply call again to move to the bext row
+                self.handle_event(event)
 
     def setposition(self, code):
         """
         Sets the current cipher position on the grids
         """
         pagesize = 10
+        shiftpage = 5
         prevrow = ((26 - helpers.a2i(self._currentc)) + helpers.a2i(self._currentc))
         nextrow = helpers.a2i(self._currentc) + (26 - helpers.a2i(self._currentc))
         lastrow = (len(self) % 26) - nextrow if (len(self) % 26) - nextrow > 0 \
@@ -125,12 +134,20 @@ class Cipher(object):
                 else 0 + ((self._cindex + pagesize) - len(self)),
             'PageUp': self._cindex - pagesize if (self._cindex - pagesize) >= 0 \
                 else (len(self) - (pagesize - self._cindex)),
+            'Shift+ArrowLeft': self._cindex - shiftpage if (self._cindex - shiftpage) >= 0 \
+                else (len(self) - (shiftpage - self._cindex)),
+            'Shift+ArrowRight': self._cindex + shiftpage if (self._cindex + shiftpage) < len(self)-1 \
+                else 0 + ((self._cindex + shiftpage) - len(self)),
             'Home':  0,
             'End': len(self) - 1,
             'ArrowDown': (self._cindex + prevrow) if self._cindex + prevrow < len(self) \
                 else helpers.a2i(self._currentc) - 1,
             # cant get this to work properly
-            'ArrowUp': (self._cindex - nextrow) if self._cindex - nextrow >= 0 else lastrow,
+            #'ArrowUp': (self._cindex - nextrow) if self._cindex - nextrow >= 0 else lastrow,
+            'ArrowUp': helpers.a2i(self._currentc) - 1 + (
+                (26 * (self._currentr - 1)) if self._currentr - 1 >= 0 else (26 * (len(self) // 26))
+            )
+
         }
         self._cindex = primary[code] if code in primary.keys() else self._cindex
         self._currentr = self._cindex // 26
@@ -159,40 +176,45 @@ class Cipher(object):
                     'style="font-size: 10px"'
                 ).hide_index()
                 if self[self._cindex].table == key and df.equals(self[self._cindex].all_positions()):
-                    style.set_properties(**{'background-color': '#00FF00'})
+                    style.set_properties(**{'background-color': '#FF0000', 'color': '#FFFFFF'})
 
                 with partial:
                     display.display(style)
                 tables[key].append(partial)
 
-        with left:
-            display.display(self[self._cindex].cipher[True].apply)
-        with right:
-            display.display(self[self._cindex].cipher[False].apply)
-
         with properties:
             display.display(
-                self[self._cindex].properties_table
+                self[self._cindex].properties_frame
                     .style.set_caption('Properties')
                     .set_table_attributes(
                         'style="font-size: 10px"'
                     ).set_properties(
                         subset=['Value'],
                         **{'width': '120px'}
-                    )
+                    ).set_properties(
+                        **{'background-color': '#D291BC'}
+                    ).hide_index()
             )
 
         with conditions:
+            df = self[self._cindex].condition_frame.reset_index()
+            df.columns = ['', 'index', 'cipher', 'lacuna']
             display.display(
-                self[self._cindex].condition_table
-                    .style.set_caption('Conditions')
+                df.style.set_caption('Conditions')
                     .set_table_attributes(
                         'style="font-size: 10px"'
-                    )
+                    ).set_properties(
+                        **{'background-color': '#85E3FF'}
+                    ).hide_index()
             )
 
         with deciphered:
             display.display(self.as_dataframe())
+
+        with left:
+            display.display(self[self._cindex].cipher[True].apply)
+        with right:
+            display.display(self[self._cindex].cipher[False].apply)
 
         subtables = VBox()
         subtables.children = [HBox(tables[True]), HBox(tables[False])]
@@ -226,14 +248,38 @@ class Cipher(object):
         for col in df[cols]:
             df.loc[mask[col], col] = ''
         df.columns = helpers.alphabet
-        return df.style.hide_index().set_caption(
+        style =  df.style.hide_index().set_caption(
             'Deciphered plaintext'
         ).set_table_attributes(
             'style="font-size: 10px"'
         ).applymap(
-            Highlighter(None, None).highlightg,
+            Highlighter(None, None).highlightr,
             subset=pd.IndexSlice[self._currentr, self._currentc]
         )
+
+        for i in range(len(self)):
+            if i == self._cindex:
+                continue
+            row = i // 26
+            col = helpers.i2a((i % 26) + 1)
+            properties_match = self[i].properties_table == self[self._cindex].properties_table
+            conditions_match = self[i].condition_table == self[self._cindex].condition_table
+            if properties_match and conditions_match:
+                style = style.applymap(
+                    Highlighter(None, None).highlights,
+                    subset=pd.IndexSlice[row, col]
+                )
+            elif properties_match:
+                style = style.applymap(
+                    Highlighter(None, None).highlightl,
+                    subset=pd.IndexSlice[row, col]
+                )
+            elif conditions_match:
+                style = style.applymap(
+                    Highlighter(None, None).highlightb,
+                    subset=pd.IndexSlice[row, col]
+                )
+        return style
 
     def display(self, index=1):
         """
