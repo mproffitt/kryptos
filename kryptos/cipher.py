@@ -197,7 +197,7 @@ class Cipher(object):
 
         with conditions:
             df = self[self._cindex].condition_frame.reset_index()
-            df.columns = ['', 'index', 'cipher', 'lacuna']
+            df.columns = ['', 'index', 'cipher', 'lacuna',]
             display.display(
                 df.style.set_caption('Conditions')
                     .set_table_attributes(
@@ -238,7 +238,7 @@ class Cipher(object):
     def table_key(self):
         key = pd.DataFrame([
             ['', 'Cipher character',],
-            ['', 'active character',],
+            ['', 'Active character',],
             ['', 'Cipher lacuna',],
             ['', 'Active lacuna',],
             ['', 'Both match',],

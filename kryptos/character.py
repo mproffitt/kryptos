@@ -155,12 +155,14 @@ class Character(object):
         Return the properties of the current object as a pandas DataFrame
         """
         return {
-            'table'         : self.table,
-            'binary'        : self.binary,
-            'polarity'      : self.polarity,
-            'mapped'        : self.mapped,
-            'cipher_active' : self.cipher_active,
-            'lacuna_active' : self.lacuna_active,
+            'table'             : self.table,
+            'binary'            : self.binary,
+            'polarity'          : self.polarity,
+            'mapped'            : self.mapped,
+            'cipher_active'     : self.cipher_active,
+            'lacuna_active'     : self.lacuna_active,
+            'deciphered_lacuna' : True if self.deciphered_lacuna else False,
+            'alphabet_even'     : self.alphabet_even,
         }
 
     @property
@@ -171,19 +173,25 @@ class Character(object):
     def condition_table(self):
         return [
             [
-                (self.index % 2) == 0, (self._char_index % 2 == 0), (self._lacuna_index % 2 == 0),
+                (self.index         % 2 == 0),
+                (self._char_index   % 2 == 0),
+                (self._lacuna_index % 2 == 0),
             ],
             [
-                (self.index % 5) == 0, (self._char_index % 5 == 0), (self._lacuna_index % 5 == 0),
+                (self.index         % 5 == 0),
+                (self._char_index   % 5 == 0),
+                (self._lacuna_index % 5 == 0),
             ],
             [
-                (self.index % 15) == 0, (self._char_index % 15 == 0), (self._lacuna_index % 15 == 0),
+                (self.index         % 15 == 0),
+                (self._char_index   % 15 == 0),
+                (self._lacuna_index % 15 == 0),
             ],
         ]
 
     @property
     def condition_frame(self):
-        df = pd.DataFrame(self.condition_table, columns=['index', 'cipher', 'lacuna'])
+        df = pd.DataFrame(self.condition_table, columns=['index', 'cipher', 'lacuna',])
         df.index   = ['% 2', '% 5', '% 15']
         return df
 
@@ -218,6 +226,10 @@ class Character(object):
     @property
     def position(self):
         return self._position
+
+    @property
+    def alphabet_even(self):
+        return ((self.index // 26) + 1) % 2 == 0
 
     @position.setter
     def position(self, where):
@@ -303,3 +315,65 @@ class Character(object):
                 self.transcribe(2, character),
             ]]
         )
+
+    @property
+    def current(self):
+        return self.cipher[self.table].get()[
+            Square.ORDER.index(self.position)
+        ]
+
+    @property
+    def all_mod_2(self):
+        return all([
+            self.index % 2 == 0,
+            self.cindex % 2 == 0,
+            self.lindex % 2 == 0,
+        ])
+
+    @property
+    def all_mod_5(self):
+        return all([
+            self.index  % 5 == 0,
+            self.cindex % 5 == 0,
+            self.lindex % 5 == 0,
+        ])
+    @property
+    def all_mod_15(self):
+        return all([
+            self.index  % 15 == 0,
+            self.cindex % 15 == 0,
+            self.lindex % 15 == 0,
+        ])
+
+    @property
+    def no_mod_2(self):
+        return all([
+            self.index  % 2 != 0,
+            self.cindex % 2 != 0,
+            self.lindex % 2 != 0,
+        ])
+
+    @property
+    def no_mod_5(self):
+        return all([
+            self.index  % 5 != 0,
+            self.cindex % 5 != 0,
+            self.lindex % 5 != 0,
+        ])
+
+    @property
+    def no_mod_15(self):
+        return all([
+            self.index  % 15 != 0,
+            self.cindex % 15 != 0,
+            self.lindex % 15 != 0,
+        ])
+
+    @property
+    def all_off(self):
+        return all([self.no_mod_2, self.no_mod_5, self.no_mod_15])
+
+    @property
+    def all_on(self):
+        return all([self.all_mod_2, self.all_mod_5, self.all_mod_15])
+

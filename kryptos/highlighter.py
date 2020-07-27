@@ -106,20 +106,20 @@ class Highlighter(object):
         Applies the current grid to the dataframe and returns the style object for rendering.
         """
         self._applied = self.apply_grid()
-        # Set the active corner in red
-        if self._active_pos:
-            self._active(self._active_pos, function=self.highlightr)
-
         # cipher goes green if available
         if self._cipher_pos:
             self._active(self._cipher_pos, function=self.highlightg)
 
-        # light red for active_lacuna if set
-        if self._active_lacuna:
-            self._active(self._active_lacuna, function=self.highlightlr)
-
         # light green for cipher_lacuna
         if self._cipher_lacuna:
             self._active(self._cipher_lacuna, function=self.highlightlg)
+
+        # Set the active corner in red
+        if self._active_pos:
+            self._active(self._active_pos, function=self.highlightr)
+
+        # light red for active_lacuna if set
+        if self._active_lacuna:
+            self._active(self._active_lacuna, function=self.highlightlr)
 
         return self._applied
