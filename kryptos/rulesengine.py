@@ -337,20 +337,58 @@ class RulesEngine:
                         character.alphabet_even,
                         character.index % 5 == 0,
                     ])
-                ]) \
+                ])
                 else 'br' if all([
                     not character.table,
                     not character.binary,
                     not character.polarity,
                     character.all_off
-                ]) \
-                else 'bl' if not character.binary \
+                ])
+                else 'bl' if not character.binary
                 else 'tr',
-            'bl': 'br' if (character.table and not character.mapped) \
-                        and not (character.all_mod_2 and character.cindex % 5 == 0 and not character.polarity)
-                    else 'bl' if not character.polarity and character.binary \
+            'bl': 'br' if any([
+                        all([
+                            all([
+                                character.table,
+                                not character.mapped
+                            ]),
+                            not all([
+                                character.all_mod_2,
+                                character.cindex % 5 == 0,
+                                not character.polarity
+                            ])
+                        ])
+                    ])
+                    else 'bl' if all([
+                        not character.polarity,
+                        character.binary,
+                    ])
                     else 'tl',
-            'br': 'tr' if not character.binary or lacuna else 'bl',
+            'br': 'tr' if any([
+                    all([
+                        not character.binary,
+                        lacuna
+                    ]),
+                    all([
+                        character.binary,
+                        not character.polarity,
+                        any(character.lacuna_active),
+                        character.cindex % 2 == 0,
+                        character.lindex % 2 == 0,
+                        character.cindex % 5 == 0,
+                        not character.alphabet_even,
+                    ]),
+                ])
+                else 'tl' if any([
+                    all([
+                        lacuna,
+                        character.binary,
+                        not character.polarity,
+                        character.cindex % 2 == 0,
+                        character.cindex % 5 == 0,
+                    ])
+                ])
+                else 'bl',
         }[
             validate
             if not character.mapped or not character.binary else character.position
@@ -378,6 +416,8 @@ class RulesEngine:
         # ============================================================================
         # SECONDARY RULES
         # ============================================================================
+        if character.index == 69:
+            print(character.algorithm)
         order_table_even = {
             'tl': 1 if lacuna and character.index % 2 == 0 \
                     else 1,
@@ -387,35 +427,104 @@ class RulesEngine:
                         (character.index % 2) != 0,
                     ])
                     else 1,
-            'bl': 1 if all([
-                        character.table,
-                        character.binary,
-                        not character.polarity,
-                        not character.all_mod_2,
-                        all(character.lacuna_active),
-                    ]) \
-                    else 2 if all([
-                        lacuna,
-                        (character.index % 2) != 0
-                    ]) \
-                    else 3 if all([
-                        character.binary,
-                        not character.polarity,
-                        character.all_mod_2,
-                        character.table,
-                        not all(character.lacuna_active)
+            'bl':  3 if any([
+                        all([
+                            character.table,
+                            character.binary,
+                            not character.polarity,
+                            not all(character.lacuna_active),
+                            character.all_mod_2,
+                        ]),
                     ])
-                    else 0 if all([
-                        character.binary,
-                        not character.polarity,
-                        all(character.lacuna_active),
-                    ]) \
-                    else 1,
+                    else 2 if any([
+                        all([
+                            character.binary,
+                            not character.polarity,
+                            all([
+                                any(character.lacuna_active),
+                                not all(character.lacuna_active),
+                            ]),
+                            all([
+                                not character.all_mod_2,
+                                character.cindex % 2 == 0,
+                                character.lindex % 2 == 0,
+                                all([
+                                    character.alphabet_even,
+                                    any([
+                                        all([
+                                            character.all_mod_2,
+                                            character.cindex % 5 == 0,
+                                        ]),
+                                        all([
+                                            character.index  % 2 != 0,
+                                            character.cindex % 2 == 0,
+                                            character.lindex % 2 == 0,
+                                            character.cindex % 5 != 0,
+                                        ]),
+                                    ])
+                                ]),
+                            ]),
+                        ]),
+                        all([
+                            character.table,
+                            character.binary,
+                            not character.polarity,
+                            not character.alphabet_even,
+                            character.index % 2 != 0,
+                            character.cindex % 2 == 0,
+                            character.lindex % 2 == 0,
+                            character.cindex % 5 == 0,
+                        ]),
+
+                    ])
+                    else 1 if any([
+                        all([
+                            character.binary,
+                            not character.polarity,
+                            any([
+                                all([
+                                    any(character.lacuna_active),
+                                    not all(character.lacuna_active),
+                                ]),
+                                any(character.cipher_active),
+                            ]),
+                            character.index  % 2 != 0,
+                            character.cindex % 2 == 0,
+                            character.lindex % 2 == 0,
+                        ]),
+                        all([
+                            character.binary,
+                            all([
+                                any([
+                                    character.polarity,
+                                    not all(character.lacuna_active),
+                                ]),
+                            ]),
+                            character.all_mod_2,
+                        ]),
+                        all([
+                            character.binary,
+                            not character.polarity,
+                            any([
+                                all(character.cipher_active),
+                                all(character.lacuna_active),
+                            ]),
+                            character.index  % 2 != 0,
+                            character.cindex % 2 == 0,
+                            character.lindex % 2 == 0,
+                        ]),
+                        all([
+                            character.binary,
+                            character.cindex % 2 == 0,
+                            character.lindex % 2 == 0,
+                            character.cindex % 5 == 0,
+                        ]),
+
+                    ])
+                    else 0,
             False: 0,
         }[even_active]
 
-        if character.index == 50:
-            print(character.algorithm)
         order_table_mixed = {
             'tl': 3 if any([
                     all([
@@ -499,11 +608,24 @@ class RulesEngine:
                         character.cindex % 15 == 0
                     ]),
                 ])
-                else 1 if character.index % 5 == 0
+                else 1 if any([
+                    all([character.index % 5 == 0,]),
+                ])
                 else 0,
-            'bl': 3 if character.table or not lacuna \
-                    else 1 if (character.binary and character.polarity) \
-                        or (character.table and character.polarity) \
+            'bl': 3 if any([
+                        character.table,
+                        not lacuna,
+                    ])
+                    else 1 if any([
+                        all([
+                            character.binary,
+                            character.polarity
+                        ]),
+                        all([
+                            character.table,
+                            character.polarity
+                        ])
+                    ])
                     else 1,
             False: 0,
         }[mixed_active]

@@ -225,13 +225,14 @@ class Cipher(object):
             HBox([VBox([properties, conditions]), subtables, VBox([deciphered, tablekey])]),
             globalout
         ]
-        self._html.value = '<h3>Current character {} ({}), lacuna {} ({}) index {}, deciphered to {}</h3>'.format(
+        self._html.value = '<h3>Current character {} ({}), lacuna {} ({}) index {}, deciphered to {} algorithm {}</h3>'.format(
             self[self._cindex].character,
             self[self._cindex].cindex,
             self[self._cindex].lacuna,
             self[self._cindex].lindex,
             self._cindex + 1,
-            str(self[self._cindex])
+            str(self[self._cindex]),
+            self[self._cindex].algorithm + 1
         )
 
     @property
