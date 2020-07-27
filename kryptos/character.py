@@ -163,6 +163,7 @@ class Character(object):
             'lacuna_active'     : self.lacuna_active,
             'deciphered_lacuna' : True if self.deciphered_lacuna else False,
             'alphabet_even'     : self.alphabet_even,
+            'upper_alphabet'    : self.upper_alphabet,
         }
 
     @property
@@ -230,6 +231,10 @@ class Character(object):
     @property
     def alphabet_even(self):
         return ((self.index // 26) + 1) % 2 == 0
+
+    @property
+    def upper_alphabet(self):
+        return (self.index % 26 if self.index % 26 != 0 else 26) > 13
 
     @position.setter
     def position(self, where):
