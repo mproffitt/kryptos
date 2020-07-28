@@ -8,11 +8,12 @@ alphabet = [
 ]
 
 rulesengine = None
+ciphertext  = None
+lacunatext  = None
 
 cache = {
     'calculator': None
 }
-cache_locked = False
 
 def a2i(ch):
     return alphabet.index(ch.upper()) + 1
@@ -59,7 +60,7 @@ def polarity(string):
         else 'M'
     )
 
-def distance_calculator(start, end):
+def initialise(start, end):
     """
     Calculates a table of distances between the start and end positions
 
@@ -67,12 +68,11 @@ def distance_calculator(start, end):
     Because it takes so long to build, the result of this is
     stored in memory for re-use throughout the cipher.
     """
-    global cache_locked, cache
-    while cache_locked:
-        sleep(0.1)
+    global ciphertext, lacunatext
+    ciphertext = start
+    lacunatext = end
 
     if not cache['calculator']:
-        cache_locked = True
         distances = [
             (start, polarity(start)),
             (end, polarity(end)),
@@ -100,5 +100,4 @@ def distance_calculator(start, end):
             pos += 1
 
         cache['calculator'] = distances
-        cache_locked = False
     return cache['calculator']

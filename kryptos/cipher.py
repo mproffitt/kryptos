@@ -38,7 +38,7 @@ class Cipher(object):
             self.ciphertext = self.lacunatext
             self.lacunatext = ciphertext
 
-        helpers.distance_calculator(self.ciphertext, self.lacunatext)
+        helpers.initialise(self.ciphertext, self.lacunatext)
 
         # ------------------------------------------------------------
         # A polarity table is formed. This is used to help determine
@@ -76,7 +76,7 @@ class Cipher(object):
         self._html = HTML('<h3>Label position?</h3>')
 
         self._inner = VBox()
-        self._vbox = VBox([self._html, self._inner, self._label])
+        self._vbox = VBox([self._html, self._inner])
         self._event = Event(source=self._vbox, watched_events=['keydown'])
         self._event.on_dom_event(self.handle_event)
         return self
@@ -142,8 +142,6 @@ class Cipher(object):
             'End': len(self) - 1,
             'ArrowDown': (self._cindex + prevrow) if self._cindex + prevrow < len(self) \
                 else helpers.a2i(self._currentc) - 1,
-            # cant get this to work properly
-            #'ArrowUp': (self._cindex - nextrow) if self._cindex - nextrow >= 0 else lastrow,
             'ArrowUp': helpers.a2i(self._currentc) - 1 + (
                 (26 * (self._currentr - 1)) if self._currentr - 1 >= 0 else (26 * (len(self) // 26))
             )
@@ -161,6 +159,7 @@ class Cipher(object):
         conditions = Output()
         deciphered = Output()
         tablekey   = Output()
+        original   = Output()
 
         tables = {
             True:  [],
@@ -205,6 +204,9 @@ class Cipher(object):
                     ).hide_index()
             )
 
+        with original:
+            display.display(self.as_dataframe(ciphertext=self.ciphertext, label='Original ciphertext'))
+
         with deciphered:
             display.display(self.as_dataframe())
 
@@ -222,7 +224,7 @@ class Cipher(object):
         self._hbox.children = [left, right]
         self._inner.children = [
             self._hbox,
-            HBox([VBox([properties, conditions]), subtables, VBox([deciphered, tablekey])]),
+            HBox([VBox([properties, conditions]), subtables, VBox([original, deciphered])]),
             globalout
         ]
         self._html.value = '<h3>Current character {} ({}), lacuna {} ({}) index {}, deciphered to {} algorithm {}</h3>'.format(
@@ -264,15 +266,14 @@ class Cipher(object):
                 'style="font-size: 10px"'
             ).hide_index().set_caption('Key')
 
-
-    def as_dataframe(self, ciphertext=False):
+    def as_dataframe(self, ciphertext=False, label='Deciphered plaintext'):
         """
         display the finished cipher in a dataframe
         """
         n = 26
         ciphertext = [str(i) for i in self] if not ciphertext else [i for i in ciphertext]
         df = pd.DataFrame(
-            [self[i:i + n] for i in range(0, len(ciphertext), n)]
+            [ciphertext[i:i + n] for i in range(0, len(ciphertext), n)]
         )
         mask = df.applymap(lambda x: x is None)
         cols = df.columns[(mask).any()]
@@ -280,7 +281,7 @@ class Cipher(object):
             df.loc[mask[col], col] = ''
         df.columns = helpers.alphabet
         style =  df.style.hide_index().set_caption(
-            'Deciphered plaintext'
+            label
         ).set_table_attributes(
             'style="font-size: 10px"'
         ).applymap(

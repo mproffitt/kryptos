@@ -48,6 +48,7 @@ class Character(object):
     character     = ''
     lacuna        = ''
     deciphered    = ''
+    ciphertext    = ''
     binary        = None
     polarity      = False
     cipher_active = False
@@ -62,13 +63,14 @@ class Character(object):
     deciphered_lacuna = {}
 
     def __init__(self, character, index, polarity, ciphertext):
-        self.index     = index
-        self.character = character.upper()
-        self.lacuna    = helpers.distancefrom(self.character, 'Z')
-        self.polarity  = polarity
+        self.index         = index
+        self.character     = character.upper()
+        self.lacuna        = helpers.distancefrom(self.character, 'Z')
+        self.polarity      = polarity
         self._char_index   = helpers.a2i(self.character)
         self._lacuna_index = helpers.a2i(self.lacuna)
         self.binary        = self._char_index % 2 == 0
+        self.ciphertext    = ciphertext
 
         # ------------------------------------------------------------
         # Create a Square object for each character in the cipher
@@ -161,9 +163,6 @@ class Character(object):
             'mapped'            : self.mapped,
             'cipher_active'     : self.cipher_active,
             'lacuna_active'     : self.lacuna_active,
-            'deciphered_lacuna' : True if self.deciphered_lacuna else False,
-            'alphabet_even'     : self.alphabet_even,
-            'upper_alphabet'    : self.upper_alphabet,
         }
 
     @property

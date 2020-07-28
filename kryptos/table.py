@@ -34,7 +34,7 @@ class Table(object):
         This table will either be 13x13 in size if all rows are even, or
         13x26 in size if the rows are a mixture of odd and even characters.
         """
-        for distance, pole in helpers.distance_calculator(self.ciphertext, self.lacuna):
+        for distance, pole in helpers.initialise(self.ciphertext, self.lacuna):
             if pole == self.poles[self.polarity]:
                 self.table.append([helpers.a2i(c) for c in distance])
 
