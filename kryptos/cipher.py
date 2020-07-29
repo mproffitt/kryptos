@@ -222,9 +222,13 @@ class Cipher(object):
         subtables.children = [HBox(tables[True]), HBox(tables[False])]
 
         tables = ''.join(self[self._cindex].all_positions_as_set())
-        characters = Label('{} - {}'.format(
+        missing = ''.join(self[self._cindex].all_positionsi_missing_as_set())
+
+        characters = Label('{} - {}\n{} - {}'.format(
             str(len(tables)),
-            tables
+            tables,
+            str(len(missing)),
+            missing
         ))
 
         self._hbox.children = [left, right]

@@ -208,6 +208,15 @@ class Character(object):
         tables = [ item for sublist in tables for item in sublist]
         return sorted(set(tables))
 
+    def all_positionsi_missing_as_set(self):
+        tables = [
+            self.all_positions_table(helpers.i2a(item))
+            for item in self.cipher[True].get() + self.cipher[False].get()
+        ]
+        tables = [ item for sublist in tables for item in sublist]
+        tables = [ item for sublist in tables for item in sublist]
+        return set(helpers.alphabet) - sorted(set(tables))
+
     @property
     def condition_frame(self):
         df = pd.DataFrame(self.condition_table, columns=['index', 'cipher', 'lacuna',])
