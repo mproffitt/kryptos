@@ -206,7 +206,6 @@ class Character(object):
         ]
         tables = [ item for sublist in tables for item in sublist]
         tables = [ item for sublist in tables for item in sublist]
-        print(tables)
         return set(tables)
 
     @property
