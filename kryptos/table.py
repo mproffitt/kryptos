@@ -60,10 +60,10 @@ class Table(object):
         """
         keys = {
             'replace': {
-                'M': 'K',
-                'V': 'J',
-                'Z': 'V',
-                'K': 'V',
+                #'M': 'K',
+                #'V': 'J',
+                #'Z': 'V',
+                #'K': 'V',
 
                 'E': 'I',
                 'Q': 'L',
