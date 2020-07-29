@@ -215,7 +215,7 @@ class Character(object):
         ]
         tables = [ item for sublist in tables for item in sublist]
         tables = [ item for sublist in tables for item in sublist]
-        return set(helpers.alphabet) - sorted(set(tables))
+        return set(helpers.alphabet) - set(sorted(set(tables)))
 
     @property
     def condition_frame(self):
