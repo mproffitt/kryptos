@@ -224,7 +224,7 @@ class Cipher(object):
         tables = ''.join(self[self._cindex].all_positions_as_set())
         missing = ''.join(self[self._cindex].all_positionsi_missing_as_set())
 
-        characters = Label('{} - {}\n{} - {}'.format(
+        characters = Label('{} - {}<br />{} - {}'.format(
             str(len(tables)),
             tables,
             str(len(missing)),
