@@ -221,10 +221,16 @@ class Cipher(object):
         subtables = VBox()
         subtables.children = [HBox(tables[True]), HBox(tables[False])]
 
+        characters = Label(''.join(self[self._cindex].all_positions_as_set()))
+
         self._hbox.children = [left, right]
         self._inner.children = [
             self._hbox,
-            HBox([VBox([properties, conditions]), subtables, VBox([original, deciphered])]),
+            HBox([
+                VBox([properties, conditions]),
+                VBox([subtables, characters]),
+                VBox([original, deciphered]),
+            ]),
             globalout
         ]
         self._html.value = '<h3>Current character {} ({}), lacuna {} ({}) index {}, deciphered to {} algorithm {}</h3>'.format(

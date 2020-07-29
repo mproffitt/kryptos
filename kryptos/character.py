@@ -72,6 +72,8 @@ class Character(object):
         self.binary        = self._char_index % 2 == 0
         self.ciphertext    = ciphertext
 
+        self._intermediate = self.character
+
         # ------------------------------------------------------------
         # Create a Square object for each character in the cipher
         # ------------------------------------------------------------
@@ -117,20 +119,6 @@ class Character(object):
     @algorithm.setter
     def algorithm(self, which):
         self._algorithm = which
-
-    @property
-    def final(self):
-        self.algorithm = self.algorithm % 4
-        if self.deciphered_lacuna:
-            self.cipher[
-                self.deciphered_lacuna['table']
-            ].mark_lacuna(
-                self.deciphered_lacuna['position']
-            )
-        return (
-            self.algorithm,
-            self.transcribe(self.algorithm, self.decipher)
-        )
 
     @property
     def totals(self):
@@ -188,6 +176,33 @@ class Character(object):
                 (self._lacuna_index % 15 == 0),
             ],
         ]
+
+    def all_positions_table(self, character)
+        return [[
+            self.transcribe(0, character),
+            self.transcribe(1, character),
+        ],[
+            self.transcribe(3, character),
+            self.transcribe(2, character),
+        ]]
+
+    def all_positions(self, character=None):
+        """
+        Get a dataframe containing all characters reachable from a given reference
+
+        :param: char character
+        :return: pandas.DataFrame
+
+        If character is None, we use the current decipher character
+        """
+        if not character:
+            character = self.decipher
+        return pd.DataFrame(self.all_positions_table(character)
+
+    def all_positions_as_set(self):
+        tables = self.cipher[True].get() + self.cipher[False].get()
+        tables = [ item for sublist in tables for item in sublist]
+        return set(tables)
 
     @property
     def condition_frame(self):
@@ -264,6 +279,20 @@ class Character(object):
             self._intermediate = helpers.rulesengine.apply_rules(self)
         return self._intermediate
 
+    @property
+    def final(self):
+        self.algorithm = self.algorithm % 4
+        if self.deciphered_lacuna:
+            self.cipher[
+                self.deciphered_lacuna['table']
+            ].mark_lacuna(
+                self.deciphered_lacuna['position']
+            )
+        return (
+            self.algorithm,
+            self.transcribe(self.algorithm, self.decipher)
+        )
+
     def transcribe(self, position, character):
         """
         For a given table index, translate the position to the one directly between ciphertext and plaintext
@@ -297,27 +326,6 @@ class Character(object):
                     (helpers.a2i(c) + helpers.a2i(helpers.distancefrom(x, 'Z'))) % 26
                 ),
             ][position](character, self.character)
-        )
-
-    def all_positions(self, character=None):
-        """
-        Get a dataframe containing all characters reachable from a given reference
-
-        :param: char character
-        :return: pandas.DataFrame
-
-        If character is None, we use the current decipher character
-        """
-        if not character:
-            character = self.decipher
-        return pd.DataFrame(
-            [[
-                self.transcribe(0, character),
-                self.transcribe(1, character),
-            ],[
-                self.transcribe(3, character),
-                self.transcribe(2, character),
-            ]]
         )
 
     @property
