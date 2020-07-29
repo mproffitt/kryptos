@@ -241,10 +241,10 @@ class Cipher(object):
         ))
 
         self._inner.children = [
-            VBox(
+            VBox([
                 HBox([left, right]),
                 HBox([lleft, lright]),
-            ),
+            ]),
             HBox([
                 VBox([properties, conditions]),
                 VBox([subtables, characters]),
