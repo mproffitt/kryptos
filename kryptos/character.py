@@ -177,7 +177,7 @@ class Character(object):
             ],
         ]
 
-    def all_positions_table(self, character)
+    def all_positions_table(self, character):
         return [[
             self.transcribe(0, character),
             self.transcribe(1, character),
