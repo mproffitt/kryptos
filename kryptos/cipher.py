@@ -221,7 +221,11 @@ class Cipher(object):
         subtables = VBox()
         subtables.children = [HBox(tables[True]), HBox(tables[False])]
 
-        characters = Label(''.join(self[self._cindex].all_positions_as_set()))
+        tables = ''.join(self[self._cindex].all_positions_as_set())
+        characters = Label('{} - {}'.format(
+            str(len(tables)),
+            tables
+        ))
 
         self._hbox.children = [left, right]
         self._inner.children = [
