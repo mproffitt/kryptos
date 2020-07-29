@@ -200,7 +200,7 @@ class Character(object):
         return pd.DataFrame(self.all_positions_table(character))
 
     def all_positions_as_set(self):
-        tables = self.cipher[True].get() + self.cipher[False].get()
+        tables = [self.all_positions_table(item) for item in self.cipher[True].get() + self.cipher[False].get()]
         tables = [ item for sublist in tables for item in sublist]
         return set(tables)
 
