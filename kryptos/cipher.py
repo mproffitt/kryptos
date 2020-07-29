@@ -161,6 +161,9 @@ class Cipher(object):
         tablekey   = Output()
         original   = Output()
 
+        lleft      = Output()
+        lright     = Output()
+
         tables = {
             True:  [],
             False: []
@@ -218,6 +221,12 @@ class Cipher(object):
         with right:
             display.display(self[self._cindex].cipher[False].apply)
 
+
+        with lleft:
+            display.display(self[self._cindex].lacuna_tables[True].apply)
+        with lright:
+            display.display(self[self._cindex].lacuna_tables[False].apply)
+
         subtables = VBox()
         subtables.children = [HBox(tables[True]), HBox(tables[False])]
 
@@ -231,9 +240,11 @@ class Cipher(object):
             missing
         ))
 
-        self._hbox.children = [left, right]
         self._inner.children = [
-            self._hbox,
+            VBox(
+                HBox([left, right]),
+                HBox([lleft, lright]),
+            ),
             HBox([
                 VBox([properties, conditions]),
                 VBox([subtables, characters]),

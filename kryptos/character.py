@@ -43,6 +43,10 @@ class Character(object):
         True: None,
         False: None,
     }
+    lacuna_tables = {
+        True: None,
+        False: None,
+    }
 
     index         = 0
     character     = ''
@@ -81,6 +85,10 @@ class Character(object):
             key: Square(self.character, key, self.polarity, ciphertext)
             for key in self.cipher.keys()
         }
+        self.lacuna_tables = {
+            key: Square(self.lacuna, key, self.polarity, ciphertext)
+            for key in self.lacuna_tables.keys()
+        }
 
         # ------------------------------------------------------------
         # We set the current polarity against the cipher character
@@ -88,6 +96,7 @@ class Character(object):
         # intermediate character.
         # ------------------------------------------------------------
         _ = [table.plot() for _, table in self.cipher.items()]
+        _ = [table.plot() for _, table in self.lacuna_tables.items()]
         _ = self.decipher
 
     def __str__(self):
