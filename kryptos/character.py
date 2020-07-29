@@ -213,9 +213,9 @@ class Character(object):
             self.all_positions_table(helpers.i2a(item))
             for item in self.cipher[True].get() + self.cipher[False].get()
         ]
-        tables = [ item for sublist in tables for item in sublist]
-        tables = [ item for sublist in tables for item in sublist]
-        return set(helpers.alphabet) - set(sorted(set(tables)))
+        while isinstance(tables[0], list):
+            tables = [item for sublist in tables for item in sublist]
+        return helpers.alphabet - sorted(set(tables))
 
     @property
     def condition_frame(self):
