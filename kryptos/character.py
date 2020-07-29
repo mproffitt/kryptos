@@ -204,8 +204,9 @@ class Character(object):
             self.all_positions_table(helpers.i2a(item))
             for item in self.cipher[True].get() + self.cipher[False].get()
         ]
-        print(tables)
         tables = [ item for sublist in tables for item in sublist]
+        tables = [ item for sublist in tables for item in sublist]
+        print(tables)
         return set(tables)
 
     @property
