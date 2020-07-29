@@ -197,7 +197,7 @@ class Character(object):
         """
         if not character:
             character = self.decipher
-        return pd.DataFrame(self.all_positions_table(character)
+        return pd.DataFrame(self.all_positions_table(character))
 
     def all_positions_as_set(self):
         tables = self.cipher[True].get() + self.cipher[False].get()
