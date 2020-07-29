@@ -215,7 +215,7 @@ class Character(object):
         ]
         while isinstance(tables[0], list):
             tables = [item for sublist in tables for item in sublist]
-        return helpers.alphabet - sorted(set(tables))
+        return set(helpers.alphabet) - set(sorted(tables))
 
     @property
     def condition_frame(self):
